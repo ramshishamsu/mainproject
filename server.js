@@ -40,16 +40,21 @@ app.use(
       // allow requests with no origin (Postman, mobile apps)
       if (!origin) return callback(null, true);
 
+  
       if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+        return callback(null, true);
       }
+
+      return callback(null, false); // ❌ do NOT throw error
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
+// ✅ VERY IMPORTANT: allow preflight explicitly
+app.options("*", cors());
 
 /* ================= STRIPE WEBHOOK (RAW BODY) ================= */
 // ⚠️ MUST come BEFORE express.json()
