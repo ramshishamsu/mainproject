@@ -27,6 +27,8 @@ import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 connectDB();
 
+const app = express();
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://fitness-management-frontend.vercel.app",
