@@ -27,8 +27,27 @@ import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 connectDB();
 
-const app = express();
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://fitness-management-frontend.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (Postman, mobile apps)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 
 /* ================= STRIPE WEBHOOK (RAW BODY) ================= */
 // ⚠️ MUST come BEFORE express.json()
