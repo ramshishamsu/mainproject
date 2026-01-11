@@ -76,6 +76,10 @@ export const createCheckoutSession = async (req, res) => {
 
   } catch (error) {
     console.error("Stripe checkout error:", error.message);
+    console.error("Full error:", error);
+    console.error("Plan ID:", req.body.planId);
+    console.error("User ID:", req.user?._id);
+    console.error("Stripe key exists:", !!process.env.STRIPE_SECRET_KEY);
     res.status(500).json({ message: error.message });
   }
 };
