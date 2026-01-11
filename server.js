@@ -64,6 +64,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/nutrition", nutritionRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/goals", goalRoutes); // NEW ROUTE
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/messages", messageRoutes);
