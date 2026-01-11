@@ -29,22 +29,36 @@ const getStripe = () => {
 
 export const createCheckoutSession = async (req, res) => {
   try {
+    console.log("=== PAYMENT DEBUG START ===");
+    console.log("Request body:", req.body);
+    console.log("User from middleware:", req.user);
+    
     const stripe = getStripe();
     const { planId } = req.body;
 
     // ✅ Logged-in user (from protect middleware)
     const userId = req.user._id.toString();
+    console.log("User ID:", userId);
+    console.log("Plan ID:", planId);
 
     const plan = await Plan.findById(planId);
+    console.log("Plan found:", plan ? "Yes" : "No");
+    if (plan) {
+      console.log("Plan details:", { name: plan.name, price: plan.price, type: typeof plan.price });
+    }
+    
     if (!plan) {
       return res.status(404).json({ message: "Plan not found" });
     }
 
     const price = Number(plan.price);
+    console.log("Processed price:", price, "Type:", typeof price);
+    
     if (!price || isNaN(price)) {
       return res.status(400).json({ message: "Invalid plan price" });
     }
 
+    console.log("Creating Stripe session...");
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
