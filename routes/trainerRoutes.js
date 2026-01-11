@@ -39,7 +39,7 @@ router.put(
 router.get("/earnings", protect, isTrainer, getTrainerEarnings);
 
 /* TRAINER USERS */
-router.get("/users", protect, isTrainer, getTrainerUsers);
+router.get("/trainer/users", protect, isTrainer, getTrainerUsers);
 
 /* ADMIN APPROVE TRAINER */
 router.put("/:id/approve", protect, adminOnly, approveTrainer);

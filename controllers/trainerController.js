@@ -226,23 +226,24 @@ export const getTrainerEarnings = async (req, res) => {
 };
 export const getTrainerUsers = async (req, res) => {
   try {
-    // find appointments for this trainer
+    // Find appointments for this trainer
     const appointments = await Appointment.find({
-      trainerId: req.user._id
+      trainerId: req.user._id,
     }).populate("userId", "name email goal");
 
-    // extract unique users
+    // Remove duplicate users
     const uniqueUsers = new Map();
 
     appointments.forEach((a) => {
       if (a.userId) {
-        uniqueUsers.set(appt.userId._id.toString(), appt.userId);
+        uniqueUsers.set(a.userId._id.toString(), a.userId);
       }
     });
 
-    res.status(200).json([...uniqueUsers.values()]);
+    res.status(200).json(Array.from(uniqueUsers.values()));
   } catch (error) {
     console.error("Get Trainer Users Error:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Failed to fetch trainer users" });
   }
 };
+
