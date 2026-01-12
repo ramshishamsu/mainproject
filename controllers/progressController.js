@@ -269,32 +269,11 @@ export const getProgressAnalytics = async (req, res) => {
           avgWeight: { $avg: "$measurements.weight" },
           avgBodyFat: { $avg: "$measurements.bodyFat" },
           avgMuscleMass: { $avg: "$measurements.muscleMass" },
-          totalWorkouts: { $sum: "$performance.totalWorkouts" },
-          totalCaloriesBurned: { $sum: "$performance.totalCaloriesBurned" },
-          avgEndurance: { $avg: "$performance.endurance" },
-          avgStrength: { $avg: "$performance.strength" },
-          avgFlexibility: { $avg: "$performance.flexibility" }
-        }
-      },
-      {
-        $group: {
-          _id: "$_id",
-          weightTrend: {
-            $cond: {
-              if: { $gt: ["$avgWeight", "$avgWeight", { $subtract: [0.1, 0] } }
-            }
-          },
-          then: "gaining",
-          else: "stable"
-          },
-          performanceTrend: {
-            $cond: {
-              if: { $gt: ["$avgEndurance", "$avgEndurance", { $subtract: [0.05, 0] } }
-            }
-          },
-          then: "improving",
-          else: "stable"
-          }
+          totalWorkouts: { $sum: { $ifNull: ["$performance.totalWorkouts", 0] } },
+          totalCaloriesBurned: { $sum: { $ifNull: ["$performance.totalCaloriesBurned", 0] } },
+          avgEndurance: { $avg: { $ifNull: ["$performance.endurance", 0] } },
+          avgStrength: { $avg: { $ifNull: ["$performance.strength", 0] } },
+          avgFlexibility: { $avg: { $ifNull: ["$performance.flexibility", 0] } }
         }
       }
     ]);
@@ -304,31 +283,27 @@ export const getProgressAnalytics = async (req, res) => {
     const data = analytics[0];
 
     if (data) {
-      // Weight management recommendations
-      if (data.weightTrend === "gaining") {
-        recommendations.push({
-          type: "adjust_goals",
-          description: "Consider setting weight loss or maintenance goals",
-          priority: "medium"
-        });
-      }
-
-      // Performance recommendations
-      if (data.avgEndurance < 5) {
+      if (data.avgEndurance !== undefined && data.avgEndurance < 5) {
         recommendations.push({
           type: "increase_intensity",
-          description: "Your endurance score is low. Consider adding more cardio exercises",
+          description: "Endurance score is low; consider adding more cardio",
           priority: "high"
         });
       }
 
-      // Strength recommendations
-      if (data.avgStrength < 5) {
+      if (data.avgStrength !== undefined && data.avgStrength < 5) {
         recommendations.push({
           type: "focus_strength",
           description: "Consider progressive overload and strength training",
           priority: "high"
         });
+      }
+
+      // Simple weight guidance based on avgWeight
+      if (data.avgWeight !== undefined) {
+        if (data.avgWeight > 100) {
+          recommendations.push({ type: "weight_management", description: "Review calorie intake and adjust goals", priority: "medium" });
+        }
       }
     }
 
@@ -341,3 +316,6 @@ export const getProgressAnalytics = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+  // Route-compatible aliases for existing exports
+  export { logProgress as addProgress, getProgressLogs as getProgress };

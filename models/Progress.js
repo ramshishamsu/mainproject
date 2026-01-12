@@ -71,15 +71,14 @@ const progressSchema = new mongoose.Schema({
   // Progress photos
   photos: [{
     type: String,
-    required: true
-  },
-  date: { type: Date, required: true },
-  category: {
-    type: String,
-    enum: ["front", "side", "back", "progress"],
-    default: "progress"
-  },
-  notes: String
+    required: true,
+    date: { type: Date, required: true },
+    category: {
+      type: String,
+      enum: ["front", "side", "back", "progress"],
+      default: "progress"
+    },
+    notes: String
   }],
 
   // Achievements and badges

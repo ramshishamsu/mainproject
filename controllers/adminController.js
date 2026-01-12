@@ -4,7 +4,9 @@ import Appointment from "../models/Appointment.js";
 import Payment from "../models/Payment.js";
 import Withdrawal from "../models/Withdrawal.js";
 import Plan from "../models/Plan.js";
-
+import Workout from "../models/Workout.js";
+import Nutrition from "../models/Nutrition.js";
+import Progress from "../models/Progress.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +35,31 @@ export const getAdminStats = async (req, res) => {
       status: "pending"
     });
 
+    const plans = await Plan.countDocuments();
+
+    // Additional stats
+    const activeUsers = await User.countDocuments({ 
+      role: "user", 
+      "subscription.status": "active" 
+    });
+
+    const totalRevenue = await Payment.aggregate([
+      { $match: { paymentStatus: "success" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+
+    const monthlyRevenue = await Payment.aggregate([
+      { $match: { paymentStatus: "success" } },
+      { 
+        $group: { 
+          _id: { $month: { $month: "$createdAt" } }, 
+          total: { $sum: "$amount" } 
+        } 
+      },
+      { $sort: { "_id.month": -1 } },
+      { $limit: 6 }
+    ]);
+
     res.json({
       totalUsers,
       totalTrainers,
@@ -40,27 +67,62 @@ export const getAdminStats = async (req, res) => {
       appointments,
       payments,
       pendingWithdrawals,
-      plans
-    
+      plans,
+      activeUsers,
+      totalRevenue: totalRevenue[0]?.total || 0,
+      monthlyRevenue: monthlyRevenue.reverse()
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 /*
 |--------------------------------------------------------------------------
-| GET ALL USERS
+| GET ALL USERS WITH FILTERS
 |--------------------------------------------------------------------------
-| Admin can view all registered users
 */
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
-    res.json(users);
+    const { page = 1, limit = 10, search, role, status } = req.query;
+    
+    const query = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (role) query.role = role;
+    if (status) query.status = status;
+
+    const users = await User.find(query)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+/*
+|--------------------------------------------------------------------------
+| USER MANAGEMENT - BLOCK/UNBLOCK
+|--------------------------------------------------------------------------
+*/
 export const blockUnblockUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -85,22 +147,76 @@ export const blockUnblockUser = async (req, res) => {
     });
   }
 };
+
 /*
 |--------------------------------------------------------------------------
-| GET ALL TRAINERS (APPROVED + PENDING)
+| DELETE USER
 |--------------------------------------------------------------------------
-| Admin can view all trainers
 */
-export const getAllTrainers = async (req, res) => {
+export const deleteUser = async (req, res) => {
   try {
-    const trainers = await Trainer.find()
-      .populate("userId", "name email"); // 🔥 THIS IS KEY
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    res.status(200).json(trainers);
+    if (user.role === "admin") {
+      return res.status(400).json({ message: "Cannot delete admin user" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+/*
+|--------------------------------------------------------------------------
+| GET ALL TRAINERS WITH FILTERS
+|--------------------------------------------------------------------------
+*/
+export const getAllTrainers = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, status } = req.query;
+    
+    const query = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (status) query.status = status;
+
+    const trainers = await Trainer.find(query)
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Trainer.countDocuments(query);
+
+    res.json({
+      trainers,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| APPROVE TRAINER
+|--------------------------------------------------------------------------
+*/
 export const approveTrainer = async (req, res) => {
   try {
     const trainer = await Trainer.findById(req.params.id);
@@ -109,11 +225,11 @@ export const approveTrainer = async (req, res) => {
       return res.status(404).json({ message: "Trainer not found" });
     }
 
-    // 1️⃣ Update trainer status
+    // Update trainer status
     trainer.status = "approved";
     await trainer.save();
 
-    // 2️⃣ Update user role & approval flag
+    // Update user role & approval flag
     await User.findByIdAndUpdate(trainer.userId, {
       role: "trainer",
       isTrainerApproved: true
@@ -127,7 +243,11 @@ export const approveTrainer = async (req, res) => {
   }
 };
 
-
+/*
+|--------------------------------------------------------------------------
+| REJECT TRAINER
+|--------------------------------------------------------------------------
+*/
 export const rejectTrainer = async (req, res) => {
   try {
     const trainer = await Trainer.findById(req.params.id);
@@ -154,13 +274,24 @@ export const rejectTrainer = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| GET ALL APPOINTMENTS
+| GET ALL APPOINTMENTS WITH FILTERS
 |--------------------------------------------------------------------------
-| Admin monitors all appointments
 */
 export const getAllAppointments = async (req, res) => {
   try {
-    const appointments = await Appointment.find()
+    const { page = 1, limit = 10, status, date, trainerId } = req.query;
+    
+    const query = {};
+    if (status) query.status = status;
+    if (date) {
+      const startOfDay = new Date(date);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      query.date = { $gte: startOfDay, $lte: endOfDay };
+    }
+    if (trainerId) query.trainerId = trainerId;
+
+    const appointments = await Appointment.find(query)
       .populate("userId", "name email")
       .populate({
         path: "trainerId",
@@ -168,9 +299,22 @@ export const getAllAppointments = async (req, res) => {
           path: "userId",
           select: "name email"
         }
-      });
+      })
+      .sort({ date: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
 
-    res.status(200).json(appointments);
+    const total = await Appointment.countDocuments(query);
+
+    res.json({
+      appointments,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -178,18 +322,71 @@ export const getAllAppointments = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| GET ALL PAYMENTS
+| RESOLVE DISPUTE
 |--------------------------------------------------------------------------
-| Admin monitors all payments
+*/
+export const resolveDispute = async (req, res) => {
+  try {
+    const { appointmentId, resolution, notes } = req.body;
+    
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    appointment.dispute = {
+      resolved: true,
+      resolution,
+      adminNotes: notes,
+      resolvedAt: new Date(),
+      resolvedBy: req.user.id
+    };
+
+    await appointment.save();
+
+    res.json({ message: "Dispute resolved successfully", appointment });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GET ALL PAYMENTS WITH FILTERS
+|--------------------------------------------------------------------------
 */
 export const getAllPayments = async (req, res) => {
   try {
-    const payments = await Payment.find()
-      .populate("userId", "name email")
-       .populate("trainerId", "name email")
-      .sort({ createdAt: -1});
+    const { page = 1, limit = 10, status, userId, startDate, endDate } = req.query;
+    
+    const query = {};
+    if (status) query.paymentStatus = status;
+    if (userId) query.userId = userId;
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
 
-    res.json(payments);
+    const payments = await Payment.find(query)
+      .populate("userId", "name email")
+      .populate("trainerId", "name email")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Payment.countDocuments(query);
+
+    res.json({
+      payments,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -197,16 +394,64 @@ export const getAllPayments = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| GET ALL WITHDRAWAL REQUESTS
+| PROCESS REFUND
 |--------------------------------------------------------------------------
-| Admin reviews trainer withdrawal requests
+*/
+export const processRefund = async (req, res) => {
+  try {
+    const { paymentId, amount, reason } = req.body;
+    
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    payment.paymentStatus = "refunded";
+    payment.refund = {
+      amount,
+      reason,
+      processedAt: new Date(),
+      processedBy: req.user.id
+    };
+
+    await payment.save();
+
+    res.json({ message: "Refund processed successfully", payment });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GET ALL WITHDRAWAL REQUESTS WITH FILTERS
+|--------------------------------------------------------------------------
 */
 export const getAllWithdrawals = async (req, res) => {
   try {
-    const withdrawals = await Withdrawal.find()
-      .populate("trainer", "name email");
+    const { page = 1, limit = 10, status, trainerId } = req.query;
+    
+    const query = {};
+    if (status) query.status = status;
+    if (trainerId) query.trainer = trainerId;
 
-    res.json(withdrawals);
+    const withdrawals = await Withdrawal.find(query)
+      .populate("trainer", "name email")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Withdrawal.countDocuments(query);
+
+    res.json({
+      withdrawals,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -214,9 +459,8 @@ export const getAllWithdrawals = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| APPROVE WITHDRAWAL (ADMIN ONLY)
+| APPROVE WITHDRAWAL
 |--------------------------------------------------------------------------
-| Releases trainer withdrawal
 */
 export const approveWithdrawals = async (req, res) => {
   try {
@@ -229,6 +473,8 @@ export const approveWithdrawals = async (req, res) => {
     }
 
     withdrawal.status = "approved";
+    withdrawal.processedAt = new Date();
+    withdrawal.processedBy = req.user.id;
     await withdrawal.save();
 
     res.json({
@@ -242,7 +488,7 @@ export const approveWithdrawals = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN – REJECT WITHDRAWAL
+| REJECT WITHDRAWAL
 |--------------------------------------------------------------------------
 */
 export const rejectWithdrawal = async (req, res) => {
@@ -263,6 +509,8 @@ export const rejectWithdrawal = async (req, res) => {
     }
 
     withdrawal.status = "rejected";
+    withdrawal.rejectedAt = new Date();
+    withdrawal.rejectedBy = req.user.id;
     await withdrawal.save();
 
     res.status(200).json({
@@ -274,32 +522,55 @@ export const rejectWithdrawal = async (req, res) => {
   }
 };
 
-// GET ALL PLANS
+/*
+|--------------------------------------------------------------------------
+| PLAN MANAGEMENT
+|--------------------------------------------------------------------------
+*/
 export const getPlans = async (req, res) => {
-  const plans = await Plan.find();
-  res.json(plans);
+  try {
+    const plans = await Plan.find().sort({ createdAt: -1 });
+    res.json(plans);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// CREATE PLAN
 export const createPlan = async (req, res) => {
-  const plan = await Plan.create(req.body);
-  res.status(201).json(plan);
+  try {
+    const plan = await Plan.create(req.body);
+    res.status(201).json(plan);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// UPDATE PLAN
 export const updatePlan = async (req, res) => {
-  const plan = await Plan.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true }
-  );
-  res.json(plan);
+  try {
+    const plan = await Plan.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+    res.json(plan);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// DELETE PLAN
 export const deletePlan = async (req, res) => {
-  await Plan.findByIdAndDelete(req.params.id);
-  res.json({ message: "Plan deleted" });
+  try {
+    const plan = await Plan.findByIdAndDelete(req.params.id);
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+    res.json({ message: "Plan deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 export const assignPlanToUser = async (req, res) => {
@@ -329,8 +600,182 @@ export const assignPlanToUser = async (req, res) => {
     );
 
     res.json({ message: "Plan assigned successfully", user });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+/*
+|--------------------------------------------------------------------------
+| USER ACTIVITY MONITORING
+|--------------------------------------------------------------------------
+*/
+export const getUserActivity = async (req, res) => {
+  try {
+    const { userId, period = '7d' } = req.query;
+    
+    let startDate;
+    const endDate = new Date();
+    
+    switch(period) {
+      case '1d':
+        startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(endDate.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const query = userId ? { userId, createdAt: { $gte: startDate, $lte: endDate } } : { createdAt: { $gte: startDate, $lte: endDate } };
+
+    // Get workouts
+    const workouts = await Workout.find(query)
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 });
+
+    // Get nutrition logs
+    const nutritionLogs = await Nutrition.find(query)
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 });
+
+    // Get progress logs
+    const progressLogs = await Progress.find(query)
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      period,
+      startDate,
+      endDate,
+      workouts: workouts.length,
+      nutritionLogs: nutritionLogs.length,
+      progressLogs: progressLogs.length,
+      data: {
+        workouts,
+        nutritionLogs,
+        progressLogs
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GENERATE REPORTS
+|--------------------------------------------------------------------------
+*/
+export const generateReports = async (req, res) => {
+  try {
+    const { type, startDate, endDate } = req.query;
+    
+    let report = {};
+    
+    switch(type) {
+      case 'users':
+        report = await generateUserReport(startDate, endDate);
+        break;
+      case 'revenue':
+        report = await generateRevenueReport(startDate, endDate);
+        break;
+      case 'trainers':
+        report = await generateTrainerReport(startDate, endDate);
+        break;
+      case 'activities':
+        report = await generateActivityReport(startDate, endDate);
+        break;
+      default:
+        return res.status(400).json({ message: "Invalid report type" });
+    }
+    
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| HELPER FUNCTIONS FOR REPORTS
+|--------------------------------------------------------------------------
+*/
+const generateUserReport = async (startDate, endDate) => {
+  const dateQuery = startDate && endDate ? { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } } : {};
+  
+  const totalUsers = await User.countDocuments({ role: "user", ...dateQuery });
+  const activeUsers = await User.countDocuments({ role: "user", "subscription.status": "active", ...dateQuery });
+  const newUsers = await User.countDocuments({ role: "user", ...dateQuery });
+  
+  return {
+    type: 'users',
+    period: { startDate, endDate },
+    data: {
+      totalUsers,
+      activeUsers,
+      newUsers
+    }
+  };
+};
+
+const generateRevenueReport = async (startDate, endDate) => {
+  const dateQuery = startDate && endDate ? { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } } : {};
+  
+  const revenue = await Payment.aggregate([
+    { $match: { paymentStatus: "success", ...dateQuery } },
+    { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+  ]);
+
+  return {
+    type: 'revenue',
+    period: { startDate, endDate },
+    data: {
+      totalRevenue: revenue[0]?.total || 0,
+      totalTransactions: revenue[0]?.count || 0
+    }
+  };
+};
+
+const generateTrainerReport = async (startDate, endDate) => {
+  const dateQuery = startDate && endDate ? { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } } : {};
+  
+  const totalTrainers = await Trainer.countDocuments({ ...dateQuery });
+  const approvedTrainers = await Trainer.countDocuments({ status: "approved", ...dateQuery });
+  const pendingTrainers = await Trainer.countDocuments({ status: "pending", ...dateQuery });
+  
+  return {
+    type: 'trainers',
+    period: { startDate, endDate },
+    data: {
+      totalTrainers,
+      approvedTrainers,
+      pendingTrainers
+    }
+  };
+};
+
+const generateActivityReport = async (startDate, endDate) => {
+  const dateQuery = startDate && endDate ? { createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } } : {};
+  
+  const workouts = await Workout.countDocuments({ ...dateQuery });
+  const nutritionLogs = await Nutrition.countDocuments({ ...dateQuery });
+  const appointments = await Appointment.countDocuments({ ...dateQuery });
+  
+  return {
+    type: 'activities',
+    period: { startDate, endDate },
+    data: {
+      totalWorkouts: workouts,
+      nutritionLogs,
+      appointments
+    }
+  };
 };

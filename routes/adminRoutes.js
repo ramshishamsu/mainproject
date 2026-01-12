@@ -2,21 +2,26 @@ import express from "express";
 import {
   getAllUsers,
   blockUnblockUser,
+  deleteUser,
   getAllTrainers,
   approveTrainer,
   rejectTrainer,
   getAllAppointments,
+  resolveDispute,
   getAllPayments,
+  processRefund,
   getAllWithdrawals,
   approveWithdrawals,
-  rejectWithdrawal,
+  rejectWithdrawals,
   getPlans,
   createPlan,
   updatePlan,
   deletePlan,
-  assignPlanToUser
+  assignPlanToUser,
+  getUserActivity,
+  generateReports,
+  getAdminStats
 } from "../controllers/adminController.js";
-import { getAdminStats } from "../controllers/adminController.js";
 import { protect, adminOnly } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -26,13 +31,17 @@ const router = express.Router();
 | ADMIN ROUTES
 |--------------------------------------------------------------------------
 | All routes are protected & admin-only
+|--------------------------------------------------------------------------
 */
 router.use(protect, adminOnly);
-router.get("/stats", protect, adminOnly, getAdminStats);
+
+// Dashboard
+router.get("/stats", getAdminStats);
+
 // User management
 router.get("/users", getAllUsers);
-// Block / Unblock user
 router.put("/users/:id/block", blockUnblockUser);
+router.delete("/users/:id", deleteUser);
 
 // Trainer management
 router.get("/trainers", getAllTrainers);
@@ -41,24 +50,28 @@ router.put("/trainers/:id/reject", rejectTrainer);
 
 // Appointment monitoring
 router.get("/appointments", getAllAppointments);
-
+router.post("/appointments/:id/resolve-dispute", resolveDispute);
 
 // Payment monitoring
 router.get("/payments", getAllPayments);
+router.post("/payments/:id/refund", processRefund);
 
 // Withdrawal management
 router.get("/withdrawals", getAllWithdrawals);
-
-// approve withdrawal
 router.put("/withdrawals/:id/approve", approveWithdrawals);
+router.put("/withdrawals/:id/reject", rejectWithdrawals);
 
-// ✅ reject withdrawal
-router.put("/withdrawals/:id/reject", rejectWithdrawal);
-// ✅ PLANS ROUTES
+// Plan management
 router.get("/plans", getPlans);
 router.post("/plans", createPlan);
 router.put("/plans/:id", updatePlan);
 router.delete("/plans/:id", deletePlan);
 router.post("/assign-plan", assignPlanToUser);
+
+// User activity monitoring
+router.get("/user-activity", getUserActivity);
+
+// Reports
+router.get("/reports", generateReports);
 
 export default router;
