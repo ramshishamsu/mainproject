@@ -239,6 +239,11 @@ export const getMyWorkouts = async (req, res) => {
       endDate 
     } = req.query;
 
+    console.log('getMyWorkouts called with:', {
+      userId: req.user._id,
+      query: req.query
+    });
+
     // Build filter
     const filter = { user: req.user._id };
     
@@ -251,13 +256,16 @@ export const getMyWorkouts = async (req, res) => {
       if (endDate) filter.date.$lte = new Date(endDate);
     }
 
+    console.log('Filter:', filter);
+
     // Execute query with pagination
     const skip = (page - 1) * limit;
     const workouts = await Workout.find(filter)
-      .populate('trainer', 'name specialization')
       .sort({ date: -1 })
       .skip(skip)
       .limit(parseInt(limit));
+
+    console.log('Found workouts:', workouts.length);
 
     const total = await Workout.countDocuments(filter);
 
