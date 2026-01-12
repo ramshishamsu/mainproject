@@ -37,28 +37,14 @@ export const getAdminStats = async (req, res) => {
 
     const plans = await Plan.countDocuments();
 
-    // Additional stats
+    // Simplified stats for debugging
     const activeUsers = await User.countDocuments({ 
-      role: "user", 
-      "subscription.status": "active" 
+      role: "user" 
     });
 
-    const totalRevenue = await Payment.aggregate([
-      { $match: { paymentStatus: "success" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } }
-    ]);
-
-    const monthlyRevenue = await Payment.aggregate([
-      { $match: { paymentStatus: "success" } },
-      { 
-        $group: { 
-          _id: { $month: { $month: "$createdAt" } }, 
-          total: { $sum: "$amount" } 
-        } 
-      },
-      { $sort: { "_id.month": -1 } },
-      { $limit: 6 }
-    ]);
+    // Temporarily remove aggregations to isolate the issue
+    const totalRevenue = 0;
+    const monthlyRevenue = [];
 
     res.json({
       totalUsers,
@@ -69,10 +55,11 @@ export const getAdminStats = async (req, res) => {
       pendingWithdrawals,
       plans,
       activeUsers,
-      totalRevenue: totalRevenue[0]?.total || 0,
-      monthlyRevenue: monthlyRevenue.reverse()
+      totalRevenue,
+      monthlyRevenue
     });
   } catch (error) {
+    console.error('Error in getAdminStats:', error);
     res.status(500).json({ message: error.message });
   }
 };
