@@ -240,12 +240,12 @@ export const getMyWorkouts = async (req, res) => {
     } = req.query;
 
     console.log('getMyWorkouts called with:', {
-      userId: req.user._id,
+      userId: req.user.id,
       query: req.query
     });
 
     // Build filter
-    const filter = { user: req.user._id };
+    const filter = { user: req.user.id };
     
     if (category) filter.category = category;
     if (difficulty) filter.difficulty = difficulty;
