@@ -14,6 +14,19 @@ import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
+// Simple test route
+router.get("/test", (req, res) => {
+  res.json({ message: "Workout routes working!" });
+});
+
+// Test route with authentication
+router.get("/test-auth", protect, (req, res) => {
+  res.json({ 
+    message: "Authentication working!", 
+    user: req.user ? req.user.id : 'no user'
+  });
+});
+
 /*
 |--------------------------------------------------------------------------
 | EXERCISE LIBRARY
