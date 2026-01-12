@@ -6,7 +6,8 @@ import {
   updateWorkout,
   deleteWorkout,
   getMyWorkouts,
-  assignWorkout
+  assignWorkout,
+  getWorkoutsForUser
 } from "../controllers/workoutController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
@@ -89,5 +90,8 @@ router.post(
   protect,
   assignWorkout
 );
+
+// GET workouts for a specific user (trainer/admin)
+router.get("/user/:userId", protect, getWorkoutsForUser);
 
 export default router;

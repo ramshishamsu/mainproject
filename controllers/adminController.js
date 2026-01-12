@@ -261,6 +261,42 @@ export const rejectTrainer = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
+| VERIFY TRAINER DOCUMENT
+|--------------------------------------------------------------------------
+*/
+export const verifyTrainerDocument = async (req, res) => {
+  try {
+    const { trainerId, docId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    const trainer = await Trainer.findById(trainerId);
+    if (!trainer) return res.status(404).json({ message: 'Trainer not found' });
+
+    const doc = trainer.documents.id(docId);
+    if (!doc) return res.status(404).json({ message: 'Document not found' });
+
+    if (action === 'approve') {
+      doc.verified = true;
+      doc.verifiedAt = new Date();
+      doc.verifiedBy = req.user.id;
+    } else if (action === 'reject') {
+      doc.verified = false;
+      doc.verifiedAt = new Date();
+      doc.verifiedBy = req.user.id;
+    } else {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+
+    await trainer.save();
+
+    res.json({ message: 'Document verification updated', doc });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
 | GET ALL APPOINTMENTS WITH FILTERS
 |--------------------------------------------------------------------------
 */
@@ -423,7 +459,10 @@ export const getAllWithdrawals = async (req, res) => {
     if (trainerId) query.trainer = trainerId;
 
     const withdrawals = await Withdrawal.find(query)
-      .populate("trainer", "name email")
+      .populate({
+        path: "trainer",
+        populate: { path: "userId", select: "name email" }
+      })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);

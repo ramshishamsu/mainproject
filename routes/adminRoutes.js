@@ -20,7 +20,8 @@ import {
   assignPlanToUser,
   getUserActivity,
   generateReports,
-  getAdminStats
+  getAdminStats,
+  verifyTrainerDocument
 } from "../controllers/adminController.js";
 import { protect, adminOnly } from "../middlewares/authMiddleware.js";
 
@@ -47,6 +48,8 @@ router.delete("/users/:id", deleteUser);
 router.get("/trainers", getAllTrainers);
 router.put("/trainers/:id/approve", approveTrainer);
 router.put("/trainers/:id/reject", rejectTrainer);
+// Verify trainer documents
+router.put("/trainers/:trainerId/docs/:docId/verify", verifyTrainerDocument);
 
 // Appointment monitoring
 router.get("/appointments", getAllAppointments);

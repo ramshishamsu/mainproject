@@ -6,6 +6,7 @@ import { checkPayment } from "../middlewares/checkpaymentMiddleware.js";
 const router = express.Router();
 
 router.post("/", protect, checkPayment, addProgress);
-router.get("/", protect, checkPayment, getProgress);
+// Allow trainers/admins to fetch progress for a user (no payment check required)
+router.get("/", protect, getProgress);
 
 export default router;

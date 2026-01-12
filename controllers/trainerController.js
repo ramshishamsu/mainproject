@@ -4,6 +4,7 @@ import Appointment from "../models/Appointment.js";
 
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
+import cloudinary from "../config/cloudinary.js";
 /*
 |--------------------------------------------------------------------------
 | Register Trainer Controller
@@ -132,7 +133,8 @@ export const approveTrainer = async (req, res) => {
 */
 export const getTrainers = async (req, res) => {
   try {
-    const trainers = await Trainer.find({ approved: true });
+    // Include user info for display (name, email)
+    const trainers = await Trainer.find({ approved: true }).populate("userId", "name email");
     res.json(trainers);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -205,6 +207,52 @@ export const updateTrainerProfile = async (req, res) => {
   }
 };
 
+/*
+|--------------------------------------------------------------------------
+| UPLOAD VERIFICATION DOCUMENT (TRAINER)
+|--------------------------------------------------------------------------
+*/
+export const uploadVerificationDoc = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No document uploaded" });
+    }
+
+    const trainer = await Trainer.findOne({ userId: req.user._id });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer profile not found" });
+    }
+
+    // Upload to Cloudinary via uploader.upload_stream
+    const uploaded = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: "trainer_documents" },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      stream.end(req.file.buffer);
+    });
+
+    const doc = {
+      url: uploaded.secure_url,
+      type: req.body.type || "other",
+      verified: false,
+      uploadedAt: new Date()
+    };
+
+    trainer.documents = trainer.documents || [];
+    trainer.documents.push(doc);
+    await trainer.save();
+
+    res.status(201).json({ message: "Document uploaded", doc });
+  } catch (error) {
+    console.error("Upload verification doc error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 /*
 |--------------------------------------------------------------------------
@@ -226,9 +274,21 @@ export const getTrainerEarnings = async (req, res) => {
 };
 export const getTrainerUsers = async (req, res) => {
   try {
-    // Find appointments for this trainer
+    // If ?all=true return all registered users (limited fields)
+    if (req.query.all === "true") {
+      const users = await User.find({ role: "user" }).select("name email goal");
+      return res.status(200).json(users);
+    }
+
+    // Find the trainer document for the logged-in user
+    const trainer = await Trainer.findOne({ userId: req.user._id });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer profile not found" });
+    }
+
+    // Find appointments that belong to this trainer
     const appointments = await Appointment.find({
-      trainerId: req.user._id,
+      trainerId: trainer._id,
     }).populate("userId", "name email goal");
 
     // Remove duplicate users

@@ -29,7 +29,21 @@ const trainerSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending"
-    }
+    },
+    // Verification documents (id, certifications, etc.)
+    documents: [
+      {
+        url: String,
+        type: { type: String, enum: ["id", "certificate", "other"], default: "other" },
+        verified: { type: Boolean, default: false },
+        uploadedAt: { type: Date, default: Date.now },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User"
+        }
+      }
+    ]
   },
   { timestamps: true }
 );

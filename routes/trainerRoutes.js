@@ -6,7 +6,8 @@ import {
   updateTrainerProfile,
   getTrainerEarnings,
   approveTrainer,
-  getTrainerUsers
+  getTrainerUsers,
+  uploadVerificationDoc
 } from "../controllers/trainerController.js";
 
 import { protect, isTrainer, adminOnly } from "../middlewares/authMiddleware.js";
@@ -35,11 +36,22 @@ router.put(
   updateTrainerProfile
 );
 
+/* UPLOAD VERIFICATION DOCUMENT */
+router.post(
+  "/verify",
+  protect,
+  isTrainer,
+  upload.single("document"),
+  uploadVerificationDoc
+);
+
+
 /* TRAINER EARNINGS */
 router.get("/earnings", protect, isTrainer, getTrainerEarnings);
 
 /* TRAINER USERS */
-router.get("/trainer/users", protect, isTrainer, getTrainerUsers);
+// Return trainer's clients (route: GET /api/trainers/users)
+router.get("/users", protect, isTrainer, getTrainerUsers);
 
 /* ADMIN APPROVE TRAINER */
 router.put("/:id/approve", protect, adminOnly, approveTrainer);

@@ -54,11 +54,21 @@ export const getProgressLogs = async (req, res) => {
       limit = 10, 
       startDate, 
       endDate, 
-      measurementType 
+      measurementType,
+      userId
     } = req.query;
 
+    // Determine which user's progress to fetch
+    // Trainers and admins may request progress for a specific user via ?userId
+    let targetUser;
+    if (userId && (req.user.role === 'trainer' || req.user.role === 'admin')) {
+      targetUser = userId;
+    } else {
+      targetUser = req.user._id;
+    }
+
     // Build filter
-    const filter = { user: req.user._id };
+    const filter = { user: targetUser };
     
     if (startDate || endDate) {
       filter.date = {};

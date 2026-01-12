@@ -261,22 +261,6 @@ export const getMyWorkouts = async (req, res) => {
 
     const total = await Workout.countDocuments(filter);
 
-    // Calculate stats
-    const stats = await Workout.aggregate([
-      { $match: { user: req.user._id } },
-      {
-        $group: {
-          _id: null,
-          totalWorkouts: { $sum: 1 },
-          totalDuration: { $sum: "$totalDuration" },
-          totalCalories: { $sum: "$totalCalories" },
-          completedWorkouts: { 
-            $sum: { $cond: [{ $eq: ["$completed", true] }, 1, 0] } 
-          }
-        }
-      }
-    ]);
-
     res.json({
       workouts,
       pagination: {
@@ -284,15 +268,10 @@ export const getMyWorkouts = async (req, res) => {
         limit: parseInt(limit),
         total,
         pages: Math.ceil(total / limit)
-      },
-      stats: stats[0] || {
-        totalWorkouts: 0,
-        totalDuration: 0,
-        totalCalories: 0,
-        completedWorkouts: 0
       }
     });
   } catch (error) {
+    console.error('getMyWorkouts error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -315,8 +294,8 @@ export const assignWorkout = async (req, res) => {
       });
     }
 
-    // Find trainer profile using logged-in trainer email
-    const trainer = await Trainer.findOne({ email: req.user.email });
+    // Find trainer profile using logged-in user's id
+    const trainer = await Trainer.findOne({ userId: req.user._id });
 
     if (!trainer) {
       return res.status(404).json({
@@ -324,19 +303,68 @@ export const assignWorkout = async (req, res) => {
       });
     }
 
+    // Build exercises array
+    const exercisesArr = [{
+      name: exercise,
+      sets: parseInt(sets, 10) || 0,
+      reps: parseInt(reps, 10) || 0,
+      calories: parseFloat(calories) || 0
+    }];
+
     const workout = await Workout.create({
       user,
       trainer: trainer._id,
-      exercise,
-      sets,
-      reps,
-      calories
+      title: `${exercise} assigned by ${trainer._id}`,
+      exercises: exercisesArr,
+      totalCalories: exercisesArr.reduce((s, e) => s + (e.calories || 0), 0),
+      totalDuration: 0,
+      completed: false
     });
 
     res.status(201).json({
       message: "Workout assigned successfully",
       workout
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GET WORKOUTS FOR A USER (TRAINER / ADMIN)
+|--------------------------------------------------------------------------
+| - Trainers can view workouts they assigned to a user
+| - Admins can view any user's workouts
+*/
+export const getWorkoutsForUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) return res.status(400).json({ message: 'User ID required' });
+
+    if (req.user.role === 'trainer') {
+      const trainer = await Trainer.findOne({ userId: req.user._id });
+      if (!trainer) return res.status(404).json({ message: 'Trainer profile not found' });
+
+      const workouts = await Workout.find({ user: userId, trainer: trainer._id })
+        .populate('trainer', 'userId')
+        .populate('user', 'name email')
+        .sort({ date: -1 });
+
+      return res.json({ workouts });
+    }
+
+    if (req.user.role === 'admin') {
+      const workouts = await Workout.find({ user: userId })
+        .populate('trainer', 'userId')
+        .populate('user', 'name email')
+        .sort({ date: -1 });
+
+      return res.json({ workouts });
+    }
+
+    return res.status(403).json({ message: 'Access denied' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
