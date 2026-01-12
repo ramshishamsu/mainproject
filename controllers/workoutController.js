@@ -238,13 +238,55 @@ export const getMyWorkouts = async (req, res) => {
       return res.status(401).json({ message: "User not authenticated" });
     }
 
-    // Test basic response
-    res.json({ 
-      message: "Test endpoint working",
-      user: req.user ? req.user.id : 'no user',
-      query: req.query
-    });
+    const { 
+      page = 1, 
+      limit = 10, 
+      category, 
+      difficulty, 
+      completed,
+      startDate,
+      endDate 
+    } = req.query;
 
+    console.log('Query params:', { page, limit, category, difficulty, completed, startDate, endDate });
+
+    // Build filter
+    const filter = { user: req.user.id };
+    
+    if (category) filter.category = category;
+    if (difficulty) filter.difficulty = difficulty;
+    if (completed !== undefined) filter.completed = completed === 'true';
+    if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) filter.date.$gte = new Date(startDate);
+      if (endDate) filter.date.$lte = new Date(endDate);
+    }
+
+    console.log('Filter:', filter);
+
+    // Execute query with pagination
+    const skip = (page - 1) * limit;
+    
+    console.log('Querying workouts...');
+    const workouts = await Workout.find(filter)
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    console.log('Found workouts:', workouts.length);
+
+    const total = await Workout.countDocuments(filter);
+    console.log('Total workouts:', total);
+
+    res.json({
+      workouts,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('getMyWorkouts error:', error);
     res.status(500).json({ message: error.message });
