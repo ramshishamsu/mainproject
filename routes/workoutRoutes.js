@@ -49,6 +49,16 @@ router.post("/", protect, createWorkout);
 
 /*
 |--------------------------------------------------------------------------
+| GET USER WORKOUTS (ENHANCED)
+|--------------------------------------------------------------------------
+| Method: GET
+| Route: /api/workouts/my
+| Role: User
+*/
+router.get("/my", protect, getMyWorkouts);
+
+/*
+|--------------------------------------------------------------------------
 | GET WORKOUT DETAILS
 |--------------------------------------------------------------------------
 | Method: GET
@@ -76,16 +86,6 @@ router.put("/:id", protect, updateWorkout);
 | Role: User
 */
 router.delete("/:id", protect, deleteWorkout);
-
-/*
-|--------------------------------------------------------------------------
-| GET USER WORKOUTS (ENHANCED)
-|--------------------------------------------------------------------------
-| Method: GET
-| Route: /api/workouts/my
-| Role: User
-*/
-router.get("/my", protect, getMyWorkouts);
 
 /*
 |--------------------------------------------------------------------------
