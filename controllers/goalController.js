@@ -6,35 +6,28 @@ import Goal from "../models/Goal.js";
 |--------------------------------------------------------------------------
 | - User creates SMART goals
 | - Supports various goal types
+| - Includes milestones and rewards
 */
 export const createGoal = async (req, res) => {
   try {
-    const { title, description, type, targetValue, targetDate, motivation } = req.body;
+    const { title, description, type, targetValue, targetDate, motivation, milestones } = req.body;
 
-    if (!title || !type || !targetValue || !targetDate) {
-      return res.status(400).json({
-        message: "Title, type, target value, and target date are required"
-      });
-    }
-
-    const goal = await Goal.create({
-      user: req.user._id,
+    const goal = new Goal({
+      user: req.user.id,
       title,
       description,
       type,
       targetValue,
-      targetDate: new Date(targetDate),
-      motivation: motivation || "health",
+      targetDate,
+      motivation,
+      milestones: milestones || [],
       currentProgress: 0,
-      milestones: [],
       isCompleted: false,
-      isActive: true
+      createdAt: new Date()
     });
 
-    res.status(201).json({
-      message: "Goal created successfully",
-      goal
-    });
+    await goal.save();
+    res.status(201).json(goal);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -42,52 +35,25 @@ export const createGoal = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| GET USER GOALS
+| GET ALL GOALS
 |--------------------------------------------------------------------------
-| - Get user's active and completed goals
-| - Support filtering and pagination
+| - User can view all their goals
+| - Filterable by type and status
 */
-export const getUserGoals = async (req, res) => {
+export const getGoals = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      type, 
-      status, 
-      startDate, 
-      endDate 
-    } = req.query;
-
-    // Build filter
-    const filter = { user: req.user._id };
+    const { type, status, page = 1, limit = 10 } = req.query;
     
-    if (type) filter.type = type;
-    if (status) filter.isCompleted = status === "true";
-    if (startDate) filter.targetDate = { $gte: new Date(startDate) };
-    if (endDate) filter.targetDate = { $lte: new Date(endDate) };
+    const query = { user: req.user.id };
+    if (type) query.type = type;
+    if (status) query.status = status;
 
-    // Execute query with pagination
-    const skip = (page - 1) * limit;
-    const goals = await Goal.find(filter)
-      .sort({ targetDate: 1, createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const goals = await Goal.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
 
-    const total = await Goal.countDocuments(filter);
-
-    // Calculate goal statistics
-    const stats = await Goal.aggregate([
-      { $match: { user: req.user._id } },
-      {
-        $group: {
-          _id: null,
-          totalGoals: { $sum: 1 },
-          activeGoals: { $sum: { $cond: [{ $eq: ["$isCompleted", false] }, 1, 0] } },
-          completedGoals: { $sum: { $cond: [{ $eq: ["$isCompleted", true] }, 1, 0] } },
-          avgProgress: { $avg: "$currentProgress" }
-        }
-      }
-    ]);
+    const total = await Goal.countDocuments(query);
 
     res.json({
       goals,
@@ -96,12 +62,6 @@ export const getUserGoals = async (req, res) => {
         limit: parseInt(limit),
         total,
         pages: Math.ceil(total / limit)
-      },
-      stats: stats[0] || {
-        totalGoals: 0,
-        activeGoals: 0,
-        completedGoals: 0,
-        avgProgress: 0
       }
     });
   } catch (error) {
@@ -111,61 +71,22 @@ export const getUserGoals = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| UPDATE GOAL PROGRESS
+| GET GOAL BY ID
 |--------------------------------------------------------------------------
-| - Update goal progress and milestones
+| - User can view specific goal details
 */
-export const updateGoalProgress = async (req, res) => {
+export const getGoalById = async (req, res) => {
   try {
-    const { goalId, progressValue, milestoneTitle, milestoneNotes, completed } = req.body;
+    const goal = await Goal.findOne({ 
+      _id: req.params.id, 
+      user: req.user.id 
+    });
 
-    if (!goalId) {
-      return res.status(400).json({
-        message: "Goal ID is required"
-      });
-    }
-
-    const goal = await Goal.findById(goalId);
-    
     if (!goal) {
       return res.status(404).json({ message: "Goal not found" });
     }
 
-    // Check ownership
-    if (goal.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    // Update progress
-    const updatedProgress = Math.min(100, Math.max(0, progressValue || 0));
-    const isCompleted = completed === "true";
-
-    // Add milestone if completed
-    if (isCompleted && milestoneTitle) {
-      goal.milestones.push({
-        title: milestoneTitle,
-        description: milestoneNotes || "",
-        targetValue: goal.targetValue,
-        achieved: true,
-        achievedDate: new Date(),
-        notes: ""
-      });
-    }
-
-    const updatedGoal = await Goal.findByIdAndUpdate(
-      goalId,
-      {
-        currentProgress: updatedProgress,
-        isCompleted: isCompleted,
-        completedAt: isCompleted ? new Date() : null
-      },
-      { new: true }
-    );
-
-    res.json({
-      message: "Goal progress updated successfully",
-      goal: updatedGoal
-    });
+    res.json(goal);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -173,22 +94,23 @@ export const updateGoalProgress = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| GET GOAL DETAILS
+| UPDATE GOAL
 |--------------------------------------------------------------------------
-| - Get specific goal with progress and milestones
+| - User can update their goals
+| - Progress tracking
 */
-export const getGoalById = async (req, res) => {
+export const updateGoal = async (req, res) => {
   try {
-    const goal = await Goal.findById(req.params.id)
-      .populate('milestones');
+    const { title, description, targetValue, targetDate, motivation, milestones, currentProgress } = req.body;
     
+    const goal = await Goal.findOneAndUpdate(
+      { _id: req.params.id, user: req.user.id },
+      { title, description, targetValue, targetDate, motivation, milestones, currentProgress },
+      { new: true }
+    );
+
     if (!goal) {
       return res.status(404).json({ message: "Goal not found" });
-    }
-
-    // Check ownership
-    if (goal.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
     }
 
     res.json(goal);
@@ -201,22 +123,18 @@ export const getGoalById = async (req, res) => {
 |--------------------------------------------------------------------------
 | DELETE GOAL
 |--------------------------------------------------------------------------
-| - Delete goal and related progress
+| - User can delete their goals
 */
 export const deleteGoal = async (req, res) => {
   try {
-    const goal = await Goal.findById(req.params.id);
-    
+    const goal = await Goal.findOneAndDelete({ 
+      _id: req.params.id, 
+      user: req.user.id 
+    });
+
     if (!goal) {
       return res.status(404).json({ message: "Goal not found" });
     }
-
-    // Check ownership
-    if (goal.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    await Goal.findByIdAndDelete(req.params.id);
 
     res.json({ message: "Goal deleted successfully" });
   } catch (error) {
@@ -228,91 +146,78 @@ export const deleteGoal = async (req, res) => {
 |--------------------------------------------------------------------------
 | GET GOAL INSIGHTS
 |--------------------------------------------------------------------------
-| - Generate goal analytics and recommendations
+| - Generate insights and recommendations
+| - Progress analysis
 */
 export const getGoalInsights = async (req, res) => {
   try {
-    const { days = 90 } = req.query; // Last 90 days
+    const goalId = req.params.id;
+    
+    const goal = await Goal.findOne({ _id: goalId, user: req.user.id });
+    
+    if (!goal) {
+      return res.status(404).json({ message: "Goal not found" });
+    }
 
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+    const today = new Date();
+    const targetDate = new Date(goal.targetDate);
+    const daysUntilTarget = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+    const progressPercentage = Math.round((currentProgress / targetValue) * 100);
 
-    const insights = await Goal.aggregate([
-      { $match: { user: req.user._id, targetDate: { $gte: startDate, $lte: endDate } } },
-      {
-        $group: {
-          _id: null,
-          totalGoals: { $sum: 1 },
-          goalsByType: {
-            $push: {
-              $each: { $type: "$type", $count: 1 }
-            }
-          },
-          completionRate: {
-            $avg: "$currentProgress"
-          }
-          },
-          avgTimeToComplete: {
-            $avg: {
-              $cond: {
-                if: { $eq: ["$isCompleted", true] }, 
-                $subtract: ["$targetDate", "$createdAt"], 
-                $divide: [86400000, 1000] 
-              }
-            }
-          }
-          }
-        }
-      },
-      {
-        $group: {
-          _id: "$type",
-          avgProgress: { $avg: "$currentProgress" },
-          mostCommonType: { $first: "$type" },
-          totalCompleted: { $sum: { $cond: [{ $eq: ["$isCompleted", true] }, 1, 0] } }
-        }
-      }
-    ]);
+    let insights = {
+      daysRemaining: daysUntilTarget,
+      progressPercentage,
+      onTrack: progressPercentage >= 50,
+      status: progressPercentage >= 100 ? 'completed' : progressPercentage >= 75 ? 'ahead' : progressPercentage >= 50 ? 'on_track' : 'behind'
+    };
 
-    // Generate recommendations
-    const recommendations = [];
-    const data = insights[0];
+    let recommendations = [];
+    
+    if (progressPercentage < 25) {
+      recommendations.push({
+        type: 'increase_effort',
+        description: 'Consider breaking down your goal into smaller milestones',
+        priority: 'high'
+      });
+    }
 
-    if (data) {
-      // Goal setting recommendations
-      if (data.completionRate < 70) {
-        recommendations.push({
-          type: "adjust_goals",
-          description: "Consider setting more realistic and achievable goals",
-          priority: "high"
-        });
-      }
+    if (daysUntilTarget <= 7 && progressPercentage < 50) {
+      recommendations.push({
+        type: 'increase_focus',
+        description: 'Your goal deadline is approaching. Increase your focus to achieve it',
+        priority: 'high'
+      });
+    }
 
-      // Progress recommendations
-      if (data.avgTimeToComplete > 60) {
-        recommendations.push({
-          type: "break_down_goals",
-          description: "Consider breaking large goals into smaller milestones",
-          priority: "medium"
-        });
-      }
-
-      // Type-specific recommendations
-      if (data.mostCommonType === "weight_loss") {
-        recommendations.push({
-          type: "focus_nutrition",
-          description: "Combine weight goals with nutrition tracking for better results",
-          priority: "high"
-        });
-      }
+    if (progressPercentage >= 75 && daysUntilTarget > 0) {
+      recommendations.push({
+        type: 'maintain_momentum',
+        description: 'Great progress! Keep up the excellent work',
+        priority: 'medium'
+      });
     }
 
     res.json({
-      period: `${days} days`,
-      insights: insights[0] || {},
+      goal: {
+        title: goal.title,
+        type: goal.type,
+        targetValue: goal.targetValue,
+        currentProgress: goal.currentProgress,
+        targetDate: goal.targetDate
+      },
+      insights,
       recommendations
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+export default {
+  createGoal,
+  getGoals,
+  getGoalById,
+  updateGoal,
+  deleteGoal,
+  getGoalInsights
 };

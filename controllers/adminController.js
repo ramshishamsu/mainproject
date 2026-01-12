@@ -491,7 +491,7 @@ export const approveWithdrawals = async (req, res) => {
 | REJECT WITHDRAWAL
 |--------------------------------------------------------------------------
 */
-export const rejectWithdrawal = async (req, res) => {
+export const rejectWithdrawals = async (req, res) => {
   try {
     const withdrawal = await Withdrawal.findById(req.params.id);
 

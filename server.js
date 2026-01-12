@@ -25,6 +25,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import planRoutes from "./routes/planRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import goalRoutes from "./routes/goalRoutes.js"
 connectDB();
 
 const app = express();
