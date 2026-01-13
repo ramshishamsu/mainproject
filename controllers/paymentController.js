@@ -66,7 +66,7 @@ export const createCheckoutSession = async (req, res) => {
     const options = {
       amount: Math.round(price * 100), // Razorpay uses paise (1 INR = 100 paise)
       currency: "INR",
-      receipt: `receipt_${userId.slice(-8)}_${Date.now().toString().slice(-6)}`,
+      receipt: `rcpt_${userId.toString().slice(-6)}_${Date.now().toString().slice(-4)}`,
       notes: {
         userId: userId,
         planId: plan._id.toString(),
