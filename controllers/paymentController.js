@@ -1,39 +1,42 @@
-import Stripe from "stripe";
+import Razorpay from "razorpay";
 import Plan from "../models/Plan.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";
 
 /*
 |--------------------------------------------------------------------------
-| LAZY STRIPE INITIALIZATION (CRITICAL FIX)
+| RAZORPAY INSTANCE
 |--------------------------------------------------------------------------
 */
 
-let stripe;
+let razorpay;
 
-const getStripe = () => {
-  if (!stripe) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("STRIPE_SECRET_KEY is missing in .env");
+const getRazorpay = () => {
+  if (!razorpay) {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      throw new Error("RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is missing in .env");
     }
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
   }
-  return stripe;
+  return razorpay;
 };
 
 /*
 |--------------------------------------------------------------------------
-| CREATE STRIPE CHECKOUT SESSION (HOSTED)
+| CREATE RAZORPAY ORDER
 |--------------------------------------------------------------------------
 */
 
 export const createCheckoutSession = async (req, res) => {
   try {
-    console.log("=== PAYMENT DEBUG START ===");
+    console.log("=== RAZORPAY PAYMENT DEBUG START ===");
     console.log("Request body:", req.body);
     console.log("User from middleware:", req.user);
     
-    const stripe = getStripe();
+    const razorpay = getRazorpay();
     const { planId } = req.body;
 
     // ✅ Logged-in user (from protect middleware)
@@ -58,42 +61,35 @@ export const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ message: "Invalid plan price" });
     }
 
-    console.log("Creating Stripe session...");
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
+    console.log("Creating Razorpay order...");
+    const options = {
+      amount: Math.round(price * 100), // Razorpay uses paise (1 INR = 100 paise)
+      currency: "INR",
+      receipt: `receipt_${userId}_${Date.now()}`,
+      notes: {
+        userId: userId,
+        planId: plan._id.toString(),
+        planName: plan.name
+      }
+    };
 
-      line_items: [
-        {
-          price_data: {
-            currency: "inr",
-            product_data: {
-              name: plan.name
-            },
-            unit_amount: Math.round(price * 100)
-          },
-          quantity: 1
-        }
-      ],
+    const order = await razorpay.orders.create(options);
+    console.log("Razorpay order created:", order.id);
 
-      // ✅ THIS IS THE FIX 🔥
-      metadata: {
-        userId,
-        planId: plan._id.toString()
-      },
-
-      success_url: `${process.env.CLIENT_URL}/user/success`,
-      cancel_url: `${process.env.CLIENT_URL}/user/cancel`
+    res.json({ 
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      notes: order.notes
     });
 
-    res.json({ url: session.url });
-
   } catch (error) {
-    console.error("Stripe checkout error:", error.message);
+    console.error("Razorpay order error:", error.message);
     console.error("Full error:", error);
     console.error("Plan ID:", req.body.planId);
     console.error("User ID:", req.user?._id);
-    console.error("Stripe key exists:", !!process.env.STRIPE_SECRET_KEY);
+    console.error("Razorpay keys exist:", !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET));
     res.status(500).json({ message: error.message });
   }
 };
@@ -118,57 +114,81 @@ export const getUserPayments = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| STRIPE WEBHOOK (OPTIONAL)
+| RAZORPAY WEBHOOK
 |--------------------------------------------------------------------------
 */
 
-export const stripeWebhook = async (req, res) => {
-  const stripe = getStripe();
-  const sig = req.headers["stripe-signature"];
-
-  let event;
+export const razorpayWebhook = async (req, res) => {
+  const crypto = require('crypto');
+  
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-
-    // Get plan details to calculate end date
-    const plan = await Plan.findById(session.metadata?.planId);
-    if (!plan) {
-      console.error('Plan not found for subscription activation');
-      return res.json({ received: true });
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+    
+    if (!signature) {
+      return res.status(400).json({ message: "Missing signature" });
     }
 
-    // Calculate end date based on plan duration
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + plan.duration);
+    // Verify webhook signature
+    const body = JSON.stringify(req.body);
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(body)
+      .digest('hex');
 
-    await Payment.create({
-      userId: session.metadata?.userId,
-      amount: session.amount_total / 100,
-      paymentMethod: "stripe",
-      paymentStatus: "success",
-      transactionId: session.id
-    });
+    if (expectedSignature !== signature) {
+      return res.status(400).json({ message: "Invalid signature" });
+    }
 
-    await User.findByIdAndUpdate(session.metadata?.userId, {
-      "subscription.plan": session.metadata?.planId,
-      "subscription.status": "active",
-      "subscription.startDate": startDate,
-      "subscription.endDate": endDate
-    });
+    const event = req.body.event;
+    console.log("Razorpay webhook event:", event);
 
-    console.log(`Subscription activated for user ${session.metadata?.userId} until ${endDate}`);
+    if (event === 'payment.captured') {
+      const payment = req.body.payload.payment.entity;
+      
+      // Get plan details from payment notes
+      const planId = payment.notes?.planId;
+      const userId = payment.notes?.userId;
+      
+      if (!planId || !userId) {
+        console.error('Missing planId or userId in payment notes');
+        return res.json({ received: true });
+      }
+
+      const plan = await Plan.findById(planId);
+      if (!plan) {
+        console.error('Plan not found for subscription activation');
+        return res.json({ received: true });
+      }
+
+      // Calculate end date based on plan duration
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + plan.duration);
+
+      // Create payment record
+      await Payment.create({
+        userId: userId,
+        amount: payment.amount / 100, // Convert paise to INR
+        paymentMethod: "razorpay",
+        paymentStatus: "success",
+        transactionId: payment.id
+      });
+
+      // Activate subscription
+      await User.findByIdAndUpdate(userId, {
+        "subscription.plan": planId,
+        "subscription.status": "active",
+        "subscription.startDate": startDate,
+        "subscription.endDate": endDate
+      });
+
+      console.log(`Subscription activated for user ${userId} until ${endDate}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error("Razorpay webhook error:", error);
+    res.status(500).json({ message: error.message });
   }
-
-  res.json({ received: true });
 };
