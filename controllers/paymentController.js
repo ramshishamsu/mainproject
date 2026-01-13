@@ -66,7 +66,7 @@ export const createCheckoutSession = async (req, res) => {
       line_items: [
         {
           price_data: {
-            currency: "aud",
+            currency: "inr",
             product_data: {
               name: plan.name
             },
