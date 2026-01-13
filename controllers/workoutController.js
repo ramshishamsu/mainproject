@@ -238,6 +238,22 @@ export const getMyWorkouts = async (req, res) => {
       return res.status(401).json({ message: "User not authenticated" });
     }
 
+    // Check if user has active subscription
+    if (!req.user.subscription || req.user.subscription.status !== 'active') {
+      return res.status(403).json({ 
+        message: "Active subscription required to view workouts",
+        requiresSubscription: true
+      });
+    }
+
+    // Check if subscription has expired
+    if (req.user.subscription.endDate && new Date() > new Date(req.user.subscription.endDate)) {
+      return res.status(403).json({ 
+        message: "Subscription has expired",
+        requiresSubscription: true
+      });
+    }
+
     const { 
       page = 1, 
       limit = 10, 
@@ -269,6 +285,7 @@ export const getMyWorkouts = async (req, res) => {
     
     console.log('Querying workouts...');
     const workouts = await Workout.find(filter)
+      .populate('trainer', 'name')
       .sort({ date: -1 })
       .skip(skip)
       .limit(parseInt(limit));
