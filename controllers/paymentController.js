@@ -140,6 +140,18 @@ export const stripeWebhook = async (req, res) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
+    // Get plan details to calculate end date
+    const plan = await Plan.findById(session.metadata?.planId);
+    if (!plan) {
+      console.error('Plan not found for subscription activation');
+      return res.json({ received: true });
+    }
+
+    // Calculate end date based on plan duration
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + plan.duration);
+
     await Payment.create({
       userId: session.metadata?.userId,
       amount: session.amount_total / 100,
@@ -151,8 +163,11 @@ export const stripeWebhook = async (req, res) => {
     await User.findByIdAndUpdate(session.metadata?.userId, {
       "subscription.plan": session.metadata?.planId,
       "subscription.status": "active",
-      "subscription.startDate": new Date()
+      "subscription.startDate": startDate,
+      "subscription.endDate": endDate
     });
+
+    console.log(`Subscription activated for user ${session.metadata?.userId} until ${endDate}`);
   }
 
   res.json({ received: true });
