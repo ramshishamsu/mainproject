@@ -2,6 +2,7 @@ import Razorpay from "razorpay";
 import Plan from "../models/Plan.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";
+import crypto from "crypto-js";
 
 /*
 |--------------------------------------------------------------------------
@@ -119,8 +120,6 @@ export const getUserPayments = async (req, res) => {
 */
 
 export const razorpayWebhook = async (req, res) => {
-  const crypto = require('crypto');
-  
   try {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
@@ -129,12 +128,11 @@ export const razorpayWebhook = async (req, res) => {
       return res.status(400).json({ message: "Missing signature" });
     }
 
-    // Verify webhook signature
+    // Verify webhook signature using crypto-js
     const body = JSON.stringify(req.body);
     const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(body)
-      .digest('hex');
+      .HmacSHA256(body, webhookSecret)
+      .toString(crypto.enc.Hex);
 
     if (expectedSignature !== signature) {
       return res.status(400).json({ message: "Invalid signature" });

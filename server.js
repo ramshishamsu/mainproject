@@ -13,7 +13,6 @@ import trainerRoutes from "./routes/trainerRoutes.js";
 import workoutRoutes from "./routes/workoutRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
-import webhookRoutes from "./routes/webhookRoutes.js"; // 🔥 Stripe webhook
 import nutritionRoutes from "./routes/nutritionRoutes.js";
 import progressRoutes from "./routes/progressRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -46,15 +45,7 @@ app.use(
 // ✅ VERY IMPORTANT: allow preflight explicitly
 app.options("*", cors());
 
-/* ================= STRIPE WEBHOOK (RAW BODY) ================= */
-// ⚠️ MUST come BEFORE express.json()
-app.use(
-  "/api/webhooks/stripe",
-  express.raw({ type: "application/json" }),
-  webhookRoutes
-);
-
-/* ================= NORMAL JSON ================= */
+/* ================= API ROUTES ================= */
 app.use(express.json());
 
 /* ================= ROUTES ================= */
