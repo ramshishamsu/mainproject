@@ -27,11 +27,14 @@ import { protect, adminOnly } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
+// Public routes (no authentication required)
+router.get("/public-trainers", getAllTrainers);
+
 /*
 |--------------------------------------------------------------------------
 | ADMIN ROUTES
 |--------------------------------------------------------------------------
-| All routes are protected & admin-only
+| All routes below are protected & admin-only
 |--------------------------------------------------------------------------
 */
 router.use(protect, adminOnly);
@@ -49,8 +52,6 @@ router.get("/trainers", getAllTrainers);
 router.put("/trainers/:id/approve", approveTrainer);
 router.put("/trainers/:id/reject", rejectTrainer);
 
-// User accessible trainers (no admin protection)
-router.get("/public-trainers", getAllTrainers);
 // Verify trainer documents
 router.put("/trainers/:trainerId/docs/:docId/verify", verifyTrainerDocument);
 

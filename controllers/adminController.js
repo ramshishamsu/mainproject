@@ -171,11 +171,19 @@ export const getAllTrainers = async (req, res) => {
     const query = {};
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { 'userId.name': { $regex: search, $options: 'i' } },
+        { 'userId.email': { $regex: search, $options: 'i' } }
       ];
     }
-    if (status) query.status = status;
+    
+    // For public access, only show approved trainers
+    // For admin access, allow status filter or show all
+    if (status) {
+      query.status = status;
+    } else if (!req.user || req.user.role !== 'admin') {
+      // If no status specified and not admin, default to approved only
+      query.status = 'approved';
+    }
 
     const trainers = await Trainer.find(query)
       .populate("userId", "name email")
