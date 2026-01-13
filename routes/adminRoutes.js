@@ -48,6 +48,9 @@ router.delete("/users/:id", deleteUser);
 router.get("/trainers", getAllTrainers);
 router.put("/trainers/:id/approve", approveTrainer);
 router.put("/trainers/:id/reject", rejectTrainer);
+
+// User accessible trainers (no admin protection)
+router.get("/public-trainers", getAllTrainers);
 // Verify trainer documents
 router.put("/trainers/:trainerId/docs/:docId/verify", verifyTrainerDocument);
 
