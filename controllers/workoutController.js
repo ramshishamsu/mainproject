@@ -1,6 +1,7 @@
 import Workout from "../models/Workout.js";
 import Exercise from "../models/Exercise.js";
 import Trainer from "../models/Trainer.js";
+import Subscription from "../models/Subscription.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -238,8 +239,13 @@ export const getMyWorkouts = async (req, res) => {
       return res.status(401).json({ message: "User not authenticated" });
     }
 
-    // Check if user has active subscription
-    if (!req.user.subscription || req.user.subscription.status !== 'active') {
+    // Check if user has active subscription in Subscription model
+    const subscription = await Subscription.findOne({
+      userId: req.user._id,
+      status: "active"
+    });
+
+    if (!subscription) {
       return res.status(403).json({ 
         message: "Active subscription required to view workouts",
         requiresSubscription: true
@@ -247,7 +253,7 @@ export const getMyWorkouts = async (req, res) => {
     }
 
     // Check if subscription has expired
-    if (req.user.subscription.endDate && new Date() > new Date(req.user.subscription.endDate)) {
+    if (subscription.endDate && new Date() > new Date(subscription.endDate)) {
       return res.status(403).json({ 
         message: "Subscription has expired",
         requiresSubscription: true
