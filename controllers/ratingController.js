@@ -1,5 +1,4 @@
-import Rating from "../models/Rating.js";
-import Feedback from "../models/Feedback.js";
+import { Rating, Feedback } from "../models/Rating.js";
 
 /*
 |--------------------------------------------------------------------------

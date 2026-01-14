@@ -21,12 +21,13 @@ export const createPlan = async (req, res) => {
 */
 export const getPlans = async (req, res) => {
   try {
-    const plans = await Plan.find();
+    const plans = await Plan.find({ isActive: true }).sort({ price: 1 });
     res.json(plans);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 /*
 |--------------------------------------------------------------------------
 | GET SINGLE PLAN BY ID (USER CHECKOUT)
