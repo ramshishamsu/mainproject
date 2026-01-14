@@ -8,11 +8,20 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB
   },
   fileFilter: (req, file, cb) => {
-    // Allow images and PDFs for verification documents
-    if (file.mimetype.startsWith("image/") || file.mimetype === "application/pdf") {
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ];
+
+    if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only images (JPG/PNG/WEBP) and PDF documents are allowed"), false);
+      cb(
+        new Error("Only JPG, PNG, WEBP images and PDF documents are allowed"),
+        false
+      );
     }
   }
 });

@@ -9,11 +9,5 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// 🔍 TEMP DEBUG (REMOVE AFTER TEST)
-console.log(
-  "CLOUDINARY INIT:",
-  cloudinary.config().cloud_name,
-  cloudinary.config().api_key
-);
 
 export default cloudinary;

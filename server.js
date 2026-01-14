@@ -24,7 +24,8 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import planRoutes from "./routes/planRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
-import goalRoutes from "./routes/goalRoutes.js"
+import goalRoutes from "./routes/goalRoutes.js";
+import ratingRoutes from "./routes/ratingRoutes.js"; // NEW ROUTE
 
 // Start server with database connection
 connectDB().then(() => {
@@ -62,6 +63,7 @@ connectDB().then(() => {
   app.use("/api/nutrition", nutritionRoutes);
   app.use("/api/progress", progressRoutes);
   app.use("/api/goals", goalRoutes); // NEW ROUTE
+  app.use("/api/ratings", ratingRoutes); // NEW ROUTE
   app.use("/api/admin", adminRoutes);
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/messages", messageRoutes);
