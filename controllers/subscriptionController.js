@@ -1,7 +1,6 @@
 import Subscription from "../models/Subscription.js";
 import Plan from "../models/Plan.js";
 
-
 /*
 |--------------------------------------------------------------------------
 | GET MY SUBSCRIPTION (USER)

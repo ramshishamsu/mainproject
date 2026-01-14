@@ -2,6 +2,7 @@ import Razorpay from "razorpay";
 import Plan from "../models/Plan.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";
+import Subscription from "../models/Subscription.js";
 import crypto from "crypto-js";
 
 /*
@@ -173,7 +174,18 @@ export const razorpayWebhook = async (req, res) => {
         transactionId: payment.id
       });
 
-      // Activate subscription
+      // Create subscription record
+      await Subscription.create({
+        userId: userId,
+        planId: planId,
+        status: "active",
+        startDate: startDate,
+        endDate: endDate,
+        paymentId: payment.id,
+        amount: payment.amount / 100
+      });
+
+      // Activate subscription in User model (for backward compatibility)
       await User.findByIdAndUpdate(userId, {
         "subscription.plan": planId,
         "subscription.status": "active",
