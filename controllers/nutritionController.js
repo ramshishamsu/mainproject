@@ -438,7 +438,10 @@ export const createNutritionForClient = async (req, res) => {
     // Check if nutrition already exists for this date
     const existingNutrition = await Nutrition.findOne({
       user: clientId,
-      date: new Date(date).toDateString()
+      date: {
+        $gte: new Date(date).setHours(0, 0, 0, 0),
+        $lt: new Date(date).setHours(23, 59, 59, 999)
+      }
     });
 
     if (existingNutrition) {
