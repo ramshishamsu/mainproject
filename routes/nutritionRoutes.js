@@ -7,7 +7,9 @@ import {
   deleteNutrition,
   getNutritionGoals,
   updateNutritionGoals,
-  getNutritionInsights
+  getNutritionInsights,
+  createNutritionForClient,
+  getClientNutrition
 } from "../controllers/nutritionController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
@@ -93,5 +95,14 @@ router.put("/goals", protect, updateNutritionGoals);
 | Role: User
 */
 router.get("/insights", protect, getNutritionInsights);
+
+/*
+|--------------------------------------------------------------------------
+| TRAINER NUTRITION MANAGEMENT
+|--------------------------------------------------------------------------
+| Trainer creates and manages nutrition for clients
+*/
+router.post("/client/:clientId", protect, createNutritionForClient);
+router.get("/client/:clientId", protect, getClientNutrition);
 
 export default router;

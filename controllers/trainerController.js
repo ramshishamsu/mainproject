@@ -1,5 +1,7 @@
 import Trainer from "../models/Trainer.js";
 import Payment from "../models/Payment.js";
+import Workout from "../models/Workout.js";
+import Appointment from "../models/Appointment.js";
 
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
@@ -303,6 +305,40 @@ export const getTrainerUsers = async (req, res) => {
   } catch (error) {
     console.error("Get Trainer Users Error:", error);
     res.status(500).json({ message: "Failed to fetch trainer users" });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GET TRAINER CLIENTS
+|--------------------------------------------------------------------------
+| - Get all clients assigned to a trainer
+| - Based on workouts and appointments
+*/
+export const getTrainerClients = async (req, res) => {
+  try {
+    const trainerId = req.user._id;
+
+    // Get users who have workouts assigned by this trainer
+    const workouts = await Workout.find({ trainer: trainerId })
+      .populate("user", "name email")
+      .distinct("user");
+
+    // Get users who have appointments with this trainer
+    const appointments = await Appointment.find({ trainerId })
+      .populate("userId", "name email")
+      .distinct("userId");
+
+    // Combine and deduplicate users
+    const allUsers = [...workouts, ...appointments];
+    const uniqueUsers = allUsers.filter((user, index, self) =>
+      index === self.findIndex((u) => u._id.toString() === user._id.toString())
+    );
+
+    res.status(200).json(uniqueUsers);
+  } catch (error) {
+    console.error("Get Trainer Clients Error:", error);
+    res.status(500).json({ message: "Failed to fetch trainer clients" });
   }
 };
 

@@ -7,6 +7,7 @@ import {
   getTrainerEarnings,
   approveTrainer,
   getTrainerUsers,
+  getTrainerClients,
   uploadVerificationDoc
 } from "../controllers/trainerController.js";
 
@@ -52,6 +53,10 @@ router.get("/earnings", protect, isTrainer, getTrainerEarnings);
 /* TRAINER USERS */
 // Return trainer's clients (route: GET /api/trainers/users)
 router.get("/users", protect, isTrainer, getTrainerUsers);
+
+/* TRAINER CLIENTS */
+// Return trainer's assigned clients (route: GET /api/trainers/clients)
+router.get("/clients", protect, isTrainer, getTrainerClients);
 
 /* ADMIN APPROVE TRAINER */
 router.put("/:id/approve", protect, adminOnly, approveTrainer);

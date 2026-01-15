@@ -1,4 +1,5 @@
 import Nutrition from "../models/Nutrition.js";
+import User from "../models/User.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -407,6 +408,101 @@ export const getNutritionInsights = async (req, res) => {
       insights: insights[0] || {},
       recommendations
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| TRAINER CREATE NUTRITION FOR CLIENT
+|--------------------------------------------------------------------------
+| - Trainer creates nutrition plan for a specific client
+| - Supports meal planning and goals
+*/
+export const createNutritionForClient = async (req, res) => {
+  try {
+    const { clientId, date, meals, waterIntake, notes, dailyGoals } = req.body;
+
+    // Validate trainer role
+    if (req.user.role !== 'trainer') {
+      return res.status(403).json({ message: "Only trainers can create nutrition plans for clients" });
+    }
+
+    // Validate client exists
+    const client = await User.findById(clientId);
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    // Check if nutrition already exists for this date
+    const existingNutrition = await Nutrition.findOne({
+      user: clientId,
+      date: new Date(date).toDateString()
+    });
+
+    if (existingNutrition) {
+      // Update existing nutrition
+      existingNutrition.meals = meals;
+      existingNutrition.waterIntake = waterIntake || existingNutrition.waterIntake;
+      existingNutrition.notes = notes || existingNutrition.notes;
+      existingNutrition.dailyGoals = dailyGoals || existingNutrition.dailyGoals;
+      
+      await existingNutrition.save();
+      
+      res.status(200).json({
+        message: "Nutrition plan updated successfully",
+        nutrition: existingNutrition
+      });
+    } else {
+      // Create new nutrition record
+      const nutrition = await Nutrition.create({
+        user: clientId,
+        date: new Date(date),
+        meals,
+        waterIntake: waterIntake || 0,
+        dailyGoals: dailyGoals || {
+          calories: 2000,
+          protein: 50,
+          carbs: 250,
+          fat: 65,
+          water: 2.5
+        },
+        notes: notes || `Created by trainer ${req.user.name}`,
+        createdBy: req.user._id // Track which trainer created it
+      });
+
+      res.status(201).json({
+        message: "Nutrition plan created successfully",
+        nutrition
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GET CLIENT NUTRITION (FOR TRAINER)
+|--------------------------------------------------------------------------
+| - Trainer can view nutrition logs for their clients
+*/
+export const getClientNutrition = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    // Validate trainer role
+    if (req.user.role !== 'trainer') {
+      return res.status(403).json({ message: "Only trainers can view client nutrition" });
+    }
+
+    // Get nutrition logs for client
+    const nutritionLogs = await Nutrition.find({ user: clientId })
+      .sort({ date: -1 })
+      .populate('createdBy', 'name email');
+
+    res.json(nutritionLogs);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
