@@ -38,7 +38,7 @@ connectDB().then(() => {
         "http://localhost:5174",
         "http://localhost:5175"
       ],
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma"],
       credentials: true,
     })
