@@ -1,7 +1,7 @@
 import Workout from "../models/Workout.js";
 import Exercise from "../models/Exercise.js";
 import Trainer from "../models/Trainer.js";
-import Subscription from "../models/Subscription.js";
+
 
 /*
 |--------------------------------------------------------------------------
@@ -230,91 +230,50 @@ export const deleteWorkout = async (req, res) => {
 */
 export const getMyWorkouts = async (req, res) => {
   try {
-    console.log('=== getMyWorkouts called ===');
-    console.log('req.user:', req.user);
-    console.log('req.query:', req.query);
+    const { completed } = req.query;
 
-    // Test if user exists
-    if (!req.user) {
-      return res.status(401).json({ message: "User not authenticated" });
+    const filter = { user: req.user._id };
+    if (completed !== undefined) {
+      filter.completed = completed === "true";
     }
 
-    // Check if user has active subscription in Subscription model
-    const subscription = await Subscription.findOne({
-      userId: req.user._id,
-      status: "active"
-    });
-
-    if (!subscription) {
-      return res.status(403).json({ 
-        message: "Active subscription required to view workouts",
-        requiresSubscription: true
-      });
-    }
-
-    // Check if subscription has expired
-    if (subscription.endDate && new Date() > new Date(subscription.endDate)) {
-      return res.status(403).json({ 
-        message: "Subscription has expired",
-        requiresSubscription: true
-      });
-    }
-
-    const { 
-      page = 1, 
-      limit = 10, 
-      category, 
-      difficulty, 
-      completed,
-      startDate,
-      endDate 
-    } = req.query;
-
-    console.log('Query params:', { page, limit, category, difficulty, completed, startDate, endDate });
-
-    // Build filter
-    const filter = { user: req.user.id };
-    
-    if (category) filter.category = category;
-    if (difficulty) filter.difficulty = difficulty;
-    if (completed !== undefined) filter.completed = completed === 'true';
-    if (startDate || endDate) {
-      filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
-    }
-
-    console.log('Filter:', filter);
-
-    // Execute query with pagination
-    const skip = (page - 1) * limit;
-    
-    console.log('Querying workouts...');
     const workouts = await Workout.find(filter)
-      .populate('trainer', 'name')
-      .sort({ date: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      .populate({
+        path: "trainer",
+        populate: {
+          path: "userId",
+          select: "name"
+        }
+      })
+      .sort({ createdAt: -1 });
 
-    console.log('Found workouts:', workouts.length);
-
-    const total = await Workout.countDocuments(filter);
-    console.log('Total workouts:', total);
-
-    res.json({
-      workouts,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    });
+    res.json(workouts);
   } catch (error) {
-    console.error('getMyWorkouts error:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
+export const markWorkoutCompleted = async (req, res) => {
+  try {
+    const workout = await Workout.findById(req.params.id);
+
+    if (!workout) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+
+    if (workout.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    workout.completed = true;
+    await workout.save();
+
+    res.json({ message: "Workout marked as completed", workout });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 /*
 |--------------------------------------------------------------------------
@@ -330,7 +289,7 @@ export const assignWorkout = async (req, res) => {
 
     if (!user || !exercise) {
       return res.status(400).json({
-        message: "User and exercise are required"
+        message: "User and exercise are required",
       });
     }
 
@@ -339,36 +298,41 @@ export const assignWorkout = async (req, res) => {
 
     if (!trainer) {
       return res.status(404).json({
-        message: "Trainer profile not found"
+        message: "Trainer profile not found",
       });
     }
 
-    // Build exercises array
-    const exercisesArr = [{
-      name: exercise,
-      sets: parseInt(sets, 10) || 0,
-      reps: parseInt(reps, 10) || 0,
-      calories: parseFloat(calories) || 0
-    }];
+    const exercisesArr = [
+      {
+        name: exercise,
+        sets: Number(sets) || 0,
+        reps: Number(reps) || 0,
+        calories: Number(calories) || 0,
+      },
+    ];
 
     const workout = await Workout.create({
       user,
-      trainer: trainer._id,
-      title: `${exercise} assigned by ${trainer._id}`,
+      trainer: trainer._id,     // ✅ relation
+      title: exercise,          // ✅ clean title
       exercises: exercisesArr,
-      totalCalories: exercisesArr.reduce((s, e) => s + (e.calories || 0), 0),
+      totalCalories: exercisesArr.reduce(
+        (sum, e) => sum + (e.calories || 0),
+        0
+      ),
       totalDuration: 0,
-      completed: false
+      completed: false,
     });
 
     res.status(201).json({
       message: "Workout assigned successfully",
-      workout
+      workout,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 /*
 |--------------------------------------------------------------------------

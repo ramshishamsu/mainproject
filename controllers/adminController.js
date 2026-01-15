@@ -1,6 +1,5 @@
 import User from "../models/User.js";
 import Trainer from "../models/Trainer.js";
-import Appointment from "../models/Appointment.js";
 import Payment from "../models/Payment.js";
 import Withdrawal from "../models/Withdrawal.js";
 import Plan from "../models/Plan.js";
@@ -50,7 +49,6 @@ export const getAdminStats = async (req, res) => {
       totalUsers,
       totalTrainers,
       pendingTrainers,
-      appointments,
       payments,
       pendingWithdrawals,
       plans,

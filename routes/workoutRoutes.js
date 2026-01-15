@@ -7,7 +7,8 @@ import {
   deleteWorkout,
   getMyWorkouts,
   assignWorkout,
-  getWorkoutsForUser
+  getWorkoutsForUser,
+  markWorkoutCompleted
 } from "../controllers/workoutController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
@@ -56,6 +57,13 @@ router.post("/", protect, createWorkout);
 | Role: User
 */
 router.get("/my", protect, getMyWorkouts);
+
+router.patch(
+  "/:id/complete",
+  protect,
+  markWorkoutCompleted
+);
+
 
 /*
 |--------------------------------------------------------------------------

@@ -1,6 +1,5 @@
 import Trainer from "../models/Trainer.js";
 import Payment from "../models/Payment.js";
-import Appointment from "../models/Appointment.js";
 
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";

@@ -13,7 +13,7 @@ export const createGoal = async (req, res) => {
     const { title, description, type, targetValue, targetDate, motivation, milestones } = req.body;
 
     const goal = new Goal({
-      user: req.user.id,
+      user: req.user._id,
       title,
       description,
       type,
@@ -44,7 +44,7 @@ export const getGoals = async (req, res) => {
   try {
     const { type, status, page = 1, limit = 10 } = req.query;
     
-    const query = { user: req.user.id };
+    const query = { user: req.user._id };
     if (type) query.type = type;
     if (status) query.status = status;
 
