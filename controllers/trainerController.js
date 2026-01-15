@@ -316,22 +316,15 @@ export const getTrainerUsers = async (req, res) => {
 */
 export const getTrainerClients = async (req, res) => {
   try {
-    const trainerId = req.user._id;
+    // Get all users (not just assigned ones) so trainer can create nutrition plans
+    const users = await User.find({ role: 'user' })
+      .select('name email _id')
+      .sort({ createdAt: -1 });
 
-    // Get users who have workouts assigned by this trainer
-    const workouts = await Workout.find({ trainer: trainerId })
-      .populate("user", "name email")
-      .distinct("user");
-
-    // Get unique users from workouts only (appointments removed)
-    const uniqueUsers = workouts.filter((user, index, self) =>
-      index === self.findIndex((u) => u._id.toString() === user._id.toString())
-    );
-
-    res.status(200).json(uniqueUsers);
+    res.status(200).json(users);
   } catch (error) {
     console.error("Get Trainer Clients Error:", error);
-    res.status(500).json({ message: "Failed to fetch trainer clients" });
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 };
 
