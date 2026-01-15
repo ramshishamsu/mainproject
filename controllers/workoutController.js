@@ -253,6 +253,28 @@ export const getMyWorkouts = async (req, res) => {
   }
 };
 
+export const getTrainerAssignedWorkouts = async (req, res) => {
+  try {
+    // Find trainer profile
+    const trainer = await Trainer.findOne({ userId: req.user._id });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer profile not found" });
+    }
+
+    // Get workouts assigned by this trainer
+    const workouts = await Workout.find({ trainer: trainer._id })
+      .populate({
+        path: "user",
+        select: "name email"
+      })
+      .sort({ createdAt: -1 });
+
+    res.json(workouts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const markWorkoutCompleted = async (req, res) => {
   try {
     const workout = await Workout.findById(req.params.id);

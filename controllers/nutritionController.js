@@ -10,6 +10,13 @@ import User from "../models/User.js";
 */
 export const logNutrition = async (req, res) => {
   try {
+    // Only users can log their own nutrition
+    if (req.user.role !== 'user') {
+      return res.status(403).json({ 
+        message: "Only users can log their nutrition. Trainers should use /nutrition/client/:clientId" 
+      });
+    }
+
     const { date, meals, waterIntake, notes } = req.body;
 
     if (!date || !meals || meals.length === 0) {
@@ -72,6 +79,13 @@ export const logNutrition = async (req, res) => {
 */
 export const getNutritionLogs = async (req, res) => {
   try {
+    // Only users can view their own nutrition logs
+    if (req.user.role !== 'user') {
+      return res.status(403).json({ 
+        message: "Only users can view their nutrition logs. Trainers should use /nutrition/client/:clientId" 
+      });
+    }
+
     const { 
       page = 1, 
       limit = 10, 
