@@ -1,7 +1,6 @@
 import Trainer from "../models/Trainer.js";
 import Payment from "../models/Payment.js";
 import Workout from "../models/Workout.js";
-import Appointment from "../models/Appointment.js";
 
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
@@ -287,17 +286,17 @@ export const getTrainerUsers = async (req, res) => {
       return res.status(404).json({ message: "Trainer profile not found" });
     }
 
-    // Find appointments that belong to this trainer
-    const appointments = await Appointment.find({
-      trainerId: trainer._id,
-    }).populate("userId", "name email goal");
+    // Find workouts assigned by this trainer
+    const workouts = await Workout.find({
+      trainer: trainer._id,
+    }).populate("user", "name email");
 
     // Remove duplicate users
     const uniqueUsers = new Map();
 
-    appointments.forEach((a) => {
-      if (a.userId) {
-        uniqueUsers.set(a.userId._id.toString(), a.userId);
+    workouts.forEach((w) => {
+      if (w.user) {
+        uniqueUsers.set(w.user._id.toString(), w.user);
       }
     });
 
@@ -324,14 +323,8 @@ export const getTrainerClients = async (req, res) => {
       .populate("user", "name email")
       .distinct("user");
 
-    // Get users who have appointments with this trainer
-    const appointments = await Appointment.find({ trainerId })
-      .populate("userId", "name email")
-      .distinct("userId");
-
-    // Combine and deduplicate users
-    const allUsers = [...workouts, ...appointments];
-    const uniqueUsers = allUsers.filter((user, index, self) =>
+    // Get unique users from workouts only (appointments removed)
+    const uniqueUsers = workouts.filter((user, index, self) =>
       index === self.findIndex((u) => u._id.toString() === user._id.toString())
     );
 
