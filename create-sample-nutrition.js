@@ -1,13 +1,20 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Nutrition from '../models/Nutrition.js';
-import User from '../models/User.js';
+import Nutrition from './models/Nutrition.js';
+import User from './models/User.js';
 
 dotenv.config();
 
+console.log('MONGO_URI:', process.env.MONGO_URI);
+
 const createSampleNutritionData = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    if (!process.env.MONGO_URI) {
+      console.error('MONGO_URI is not defined in .env file');
+      return;
+    }
+    
+    await mongoose.connect(process.env.MONGO_URI);
     console.log('Connected to MongoDB');
 
     // Find the test user
