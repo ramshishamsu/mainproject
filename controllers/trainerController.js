@@ -163,12 +163,12 @@ export const getTrainerProfile = async (req, res) => {
     // Transform document URLs to ensure public access
     if (trainer.documents && trainer.documents.length > 0) {
       trainer.documents = trainer.documents.map(doc => {
-        // Extract public_id from existing URL and create unsigned URL
+        // Extract public_id from existing URL and create raw URL
         const urlParts = doc.url.split('/');
         const publicId = urlParts[urlParts.length - 1].split('.')[0];
         return {
           ...doc,
-          url: `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/fl_attachment/${publicId}`
+          url: `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${publicId}`
         };
       });
     }
@@ -264,7 +264,7 @@ export const uploadVerificationDoc = async (req, res) => {
     }
 
     const doc = {
-      url: `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/fl_attachment/${uploaded.public_id}`,
+      url: `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${uploaded.public_id}`,
       type: req.body.type || "other",
       verified: false,
       uploadedAt: new Date()
