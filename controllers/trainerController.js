@@ -162,15 +162,10 @@ export const getTrainerProfile = async (req, res) => {
 
     // Transform document URLs to ensure public access
     if (trainer.documents && trainer.documents.length > 0) {
-      trainer.documents = trainer.documents.map(doc => {
-        // Extract public_id from existing URL and create raw URL
-        const urlParts = doc.url.split('/');
-        const publicId = urlParts[urlParts.length - 1].split('.')[0];
-        return {
-          ...doc,
-          url: `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${publicId}`
-        };
-      });
+      trainer.documents = trainer.documents.map(doc => ({
+        ...doc,
+        url: doc.url // Use original URL for now
+      }));
     }
 
     res.status(200).json(trainer);
@@ -241,9 +236,12 @@ export const uploadVerificationDoc = async (req, res) => {
       const stream = cloudinary.uploader.upload_stream(
         { 
           folder: "trainer_documents",
-          resource_type: "auto",  // Auto-detect file type (image, pdf, etc.)
-          access_mode: "public",   // Make publicly accessible
-          type: "upload"          // Standard upload type
+          resource_type: "auto",
+          type: "upload",
+          access_mode: "public",
+          use_filename: true,
+          unique_filename: false,
+          overwrite: true
         },
         (error, result) => {
           if (error) return reject(error);
@@ -264,7 +262,7 @@ export const uploadVerificationDoc = async (req, res) => {
     }
 
     const doc = {
-      url: `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${uploaded.public_id}`,
+      url: uploaded.secure_url, // Use the original secure_url which works
       type: req.body.type || "other",
       verified: false,
       uploadedAt: new Date()
