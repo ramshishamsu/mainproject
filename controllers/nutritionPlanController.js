@@ -117,9 +117,10 @@ export const getTrainerNutritionPlans = async (req, res) => {
     res.json({
       nutritionPlans,
       pagination: {
-        current: parseInt(page),
-        pages: Math.ceil(total / limit),
-        total
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {

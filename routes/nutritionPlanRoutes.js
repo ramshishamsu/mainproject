@@ -1,6 +1,7 @@
 import express from "express";
 import {
   createNutritionPlan,
+  getNutritionPlans,
   getTrainerNutritionPlans,
   getNutritionPlan,
   updateNutritionPlan,
@@ -17,10 +18,12 @@ const router = express.Router();
 // Apply authentication middleware to all routes
 router.use(protect);
 
-// Trainer routes
-router.post("/", createNutritionPlan);
-router.get("/", getTrainerNutritionPlans);
+// Universal routes - work for both trainers and users
+router.get("/", getNutritionPlans);
 router.get("/:id", getNutritionPlan);
+
+// Trainer-only routes
+router.post("/", createNutritionPlan);
 router.put("/:id", updateNutritionPlan);
 router.delete("/:id", deleteNutritionPlan);
 
