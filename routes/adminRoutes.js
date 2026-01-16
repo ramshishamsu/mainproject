@@ -4,6 +4,7 @@ import {
   blockUnblockUser,
   deleteUser,
   getAllTrainers,
+  getTrainerDetails,
   approveTrainer,
   rejectTrainer,
   getAllAppointments,
@@ -49,11 +50,47 @@ router.delete("/users/:id", deleteUser);
 
 // Trainer management
 router.get("/trainers", getAllTrainers);
+router.get("/trainers/:id", getTrainerDetails);
 router.put("/trainers/:id/approve", approveTrainer);
 router.put("/trainers/:id/reject", rejectTrainer);
 
 // Verify trainer documents
 router.put("/trainers/:trainerId/docs/:docId/verify", verifyTrainerDocument);
+
+// Serve trainer documents (bypass Cloudinary authentication)
+router.get("/trainers/:trainerId/docs/:docId/view", async (req, res) => {
+  try {
+    const { trainerId, docId } = req.params;
+    
+    const trainer = await Trainer.findById(trainerId);
+    if (!trainer) {
+      return res.status(404).json({ message: 'Trainer not found' });
+    }
+
+    const doc = trainer.documents.id(docId);
+    if (!doc) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    console.log('Serving document:', {
+      trainerId,
+      docId,
+      documentType: doc.type,
+      originalUrl: doc.url
+    });
+
+    // Set headers to bypass Cloudinary authentication
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Redirect to Cloudinary URL with proper parameters
+    res.redirect(302, doc.url);
+  } catch (error) {
+    console.error('Error serving document:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // Appointment monitoring
 router.get("/appointments", getAllAppointments);

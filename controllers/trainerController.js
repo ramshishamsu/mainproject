@@ -113,7 +113,7 @@ export const approveTrainer = async (req, res) => {
     // 2️⃣ Optional: update trainer approved flag
     await Trainer.findOneAndUpdate(
       { userId },
-      { approved: true }
+      { status: "approved" }
     );
 
     res.status(200).json({
@@ -134,7 +134,7 @@ export const approveTrainer = async (req, res) => {
 export const getTrainers = async (req, res) => {
   try {
     // Include user info for display (name, email)
-    const trainers = await Trainer.find({ approved: true }).populate("userId", "name email");
+    const trainers = await Trainer.find({ status: "approved" }).populate("userId", "name email");
     res.json(trainers);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -11,7 +11,7 @@ import {
   uploadVerificationDoc
 } from "../controllers/trainerController.js";
 
-import { protect, isTrainer, adminOnly } from "../middlewares/authMiddleware.js";
+import { protect, isTrainer, adminOnly, trainerApprovedOnly } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();

@@ -12,7 +12,6 @@ import userRoutes from "./routes/userRoutes.js";
 import trainerRoutes from "./routes/trainerRoutes.js";
 import workoutRoutes from "./routes/workoutRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
-import nutritionRoutes from "./routes/nutritionRoutes.js";
 import progressRoutes from "./routes/progressRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
@@ -23,6 +22,7 @@ import planRoutes from "./routes/planRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import goalRoutes from "./routes/goalRoutes.js";
 import ratingRoutes from "./routes/ratingRoutes.js"; // NEW ROUTE
+import nutritionPlanRoutes from "./routes/nutritionPlanRoutes.js";
 
 // Start server with database connection
 connectDB().then(() => {
@@ -56,8 +56,8 @@ connectDB().then(() => {
   app.use("/api/trainers", trainerRoutes);
   app.use("/api/workouts", workoutRoutes);
   app.use("/api/payments", paymentRoutes);
-  app.use("/api/nutrition", nutritionRoutes);
   app.use("/api/progress", progressRoutes);
+  app.use("/api/nutrition-plans", nutritionPlanRoutes);
   app.use("/api/goals", goalRoutes); // NEW ROUTE
   app.use("/api/ratings", ratingRoutes); // NEW ROUTE
   app.use("/api/admin", adminRoutes);

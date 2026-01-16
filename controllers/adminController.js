@@ -4,7 +4,6 @@ import Payment from "../models/Payment.js";
 import Withdrawal from "../models/Withdrawal.js";
 import Plan from "../models/Plan.js";
 import Workout from "../models/Workout.js";
-import Nutrition from "../models/Nutrition.js";
 import Progress from "../models/Progress.js";
 
 /*
@@ -207,6 +206,28 @@ export const getAllTrainers = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
+| GET TRAINER DETAILS
+|--------------------------------------------------------------------------
+*/
+export const getTrainerDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const trainer = await Trainer.findById(id).populate('userId', 'name email');
+    
+    if (!trainer) {
+      return res.status(404).json({ message: 'Trainer not found' });
+    }
+
+    res.json(trainer);
+  } catch (error) {
+    console.error('Error fetching trainer details:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
 | APPROVE TRAINER
 |--------------------------------------------------------------------------
 */
@@ -222,16 +243,24 @@ export const approveTrainer = async (req, res) => {
     trainer.status = "approved";
     await trainer.save();
 
-    // Update user role & approval flag
+    // Update user role, status, and approval flag
     await User.findByIdAndUpdate(trainer.userId, {
       role: "trainer",
+      status: "approved",
       isTrainerApproved: true
+    });
+
+    console.log('Trainer approved successfully:', {
+      trainerId: trainer._id,
+      userId: trainer.userId,
+      status: 'approved'
     });
 
     res.status(200).json({
       message: "Trainer approved successfully"
     });
   } catch (error) {
+    console.error('Error approving trainer:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -278,6 +307,7 @@ export const verifyTrainerDocument = async (req, res) => {
     const trainer = await Trainer.findById(trainerId);
     if (!trainer) return res.status(404).json({ message: 'Trainer not found' });
 
+    // Find the document in the documents array
     const doc = trainer.documents.id(docId);
     if (!doc) return res.status(404).json({ message: 'Document not found' });
 
@@ -293,10 +323,31 @@ export const verifyTrainerDocument = async (req, res) => {
       return res.status(400).json({ message: 'Invalid action' });
     }
 
+    // Mark the documents array as modified
+    trainer.markModified('documents');
     await trainer.save();
 
-    res.json({ message: 'Document verification updated', doc });
+    console.log('Document verification updated:', {
+      trainerId,
+      docId,
+      action,
+      verified: doc.verified,
+      verifiedBy: req.user.id
+    });
+
+    res.json({ 
+      message: 'Document verification updated', 
+      document: {
+        _id: doc._id,
+        type: doc.type,
+        url: doc.url,
+        verified: doc.verified,
+        verifiedAt: doc.verifiedAt,
+        verifiedBy: doc.verifiedBy
+      }
+    });
   } catch (error) {
+    console.error('Error verifying document:', error);
     res.status(500).json({ message: error.message });
   }
 };

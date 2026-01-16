@@ -96,11 +96,7 @@ export const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
-    if (user.role === "trainer" && !["approved", "active"].includes(user.status) ){
-  return res.status(403).json({
-    message: "Trainer account pending admin approval"
-  });
-}
+   
 
     // 3️⃣ Generate token
     const token = jwt.sign(
@@ -206,4 +202,40 @@ export const resetPassword = async (req, res) => {
 ========================================================= */
 export const logoutUser = (req, res) => {
   res.json({ message: "Logout successful" });
+};
+
+/* =========================================================
+   GET CURRENT USER
+========================================================= */
+export const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log('getCurrentUser - User found:', {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      isTrainerApproved: user.isTrainerApproved
+    });
+
+    res.json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        isTrainerApproved: user.isTrainerApproved
+      }
+    });
+  } catch (error) {
+    console.error('getCurrentUser - Error:', error);
+    res.status(500).json({ message: error.message });
+  }
 };

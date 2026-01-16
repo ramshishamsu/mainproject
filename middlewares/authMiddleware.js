@@ -10,10 +10,13 @@ export const protect = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
+      console.log('Token found:', token.substring(0, 20) + '...');
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Decoded token:', decoded);
 
       req.user = await User.findById(decoded.id).select("-password");
+      console.log('User from database:', req.user);
 
       if (!req.user) {
         return res.status(401).json({ message: "User not found" });
@@ -21,9 +24,11 @@ export const protect = async (req, res, next) => {
 
       next();
     } catch (error) {
+      console.error('Token error:', error);
       return res.status(401).json({ message: "Invalid token" });
     }
   } else {
+    console.log('No token provided in headers');
     return res.status(401).json({ message: "No token provided" });
   }
 };
@@ -38,5 +43,19 @@ export const isTrainer = (req, res, next) => {
   if (req.user.role !== "trainer") {
     return res.status(403).json({ message: "Trainer access only" });
   }
+  next();
+};
+
+export const trainerApprovedOnly = (req, res, next) => {
+  if (req.user.role !== "trainer") {
+    return res.status(403).json({ message: "Trainer access only" });
+  }
+
+  if (req.user.status !== "approved") {
+    return res.status(403).json({
+      message: "Trainer account under review"
+    });
+  }
+
   next();
 };
