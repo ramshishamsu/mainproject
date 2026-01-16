@@ -160,6 +160,14 @@ export const getTrainerProfile = async (req, res) => {
       });
     }
 
+    // Transform document URLs to ensure public access
+    if (trainer.documents && trainer.documents.length > 0) {
+      trainer.documents = trainer.documents.map(doc => ({
+        ...doc,
+        url: doc.url.replace('/upload/', '/upload/fl_attachment/')
+      }));
+    }
+
     res.status(200).json(trainer);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -240,8 +248,18 @@ export const uploadVerificationDoc = async (req, res) => {
       stream.end(req.file.buffer);
     });
 
+    // Ensure the uploaded resource is explicitly public
+    try {
+      await cloudinary.api.resource(uploaded.public_id, {
+        resource_type: "auto",
+        type: "upload"
+      });
+    } catch (error) {
+      console.warn("Could not verify resource access:", error.message);
+    }
+
     const doc = {
-      url: uploaded.secure_url,
+      url: uploaded.secure_url.replace('/upload/', '/upload/fl_attachment/'), // Force public download
       type: req.body.type || "other",
       verified: false,
       uploadedAt: new Date()
