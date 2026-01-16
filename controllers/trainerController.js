@@ -164,7 +164,7 @@ export const getTrainerProfile = async (req, res) => {
     if (trainer.documents && trainer.documents.length > 0) {
       trainer.documents = trainer.documents.map(doc => ({
         ...doc,
-        url: doc.url // Use original URL for now
+        url: doc.url.replace('/upload/', '/upload/fl_attachment/') // Add attachment flag to existing URLs
       }));
     }
 
@@ -262,7 +262,7 @@ export const uploadVerificationDoc = async (req, res) => {
     }
 
     const doc = {
-      url: uploaded.secure_url, // Use the original secure_url which works
+      url: uploaded.secure_url.replace('https://res.cloudinary.com', 'https://res.cloudinary.com').replace('/upload/', '/upload/fl_attachment/'), // Use secure_url with attachment flag
       type: req.body.type || "other",
       verified: false,
       uploadedAt: new Date()
