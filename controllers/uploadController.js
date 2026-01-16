@@ -14,7 +14,12 @@ export const uploadProfileImage = async (req, res) => {
     }
 
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "fitness_users" },
+      { 
+        folder: "fitness_users",
+        resource_type: "auto",  // Auto-detect file type
+        access_mode: "public",   // Make publicly accessible
+        type: "upload"          // Standard upload type
+      },
       (error, result) => {
         if (error) {
                 console.error("CLOUDINARY ERROR ❌", error);

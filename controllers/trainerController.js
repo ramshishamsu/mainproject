@@ -226,7 +226,12 @@ export const uploadVerificationDoc = async (req, res) => {
     // Upload to Cloudinary via uploader.upload_stream
     const uploaded = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { folder: "trainer_documents" },
+        { 
+          folder: "trainer_documents",
+          resource_type: "auto",  // Auto-detect file type (image, pdf, etc.)
+          access_mode: "public",   // Make publicly accessible
+          type: "upload"          // Standard upload type
+        },
         (error, result) => {
           if (error) return reject(error);
           resolve(result);
