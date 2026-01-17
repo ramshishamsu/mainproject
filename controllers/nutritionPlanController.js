@@ -142,7 +142,7 @@ export const getNutritionPlan = async (req, res) => {
     }
 
     console.log('ACCESS GRANTED - Returning plan');
-    res.json({ nutritionPlan: plan });
+    res.json(plan);
   } catch (err) {
     console.error('Error in getNutritionPlan:', err);
     res.status(500).json({ message: err.message });
