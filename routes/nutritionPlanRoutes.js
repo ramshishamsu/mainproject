@@ -1,6 +1,7 @@
 import express from "express";
 import {
   createNutritionPlan,
+  getNutritionPlans,
   getNutritionPlan,
   updateNutritionPlan,
   deleteNutritionPlan,
@@ -17,6 +18,7 @@ const router = express.Router();
 router.use(protect);
 
 // Universal routes - work for both trainers and users
+router.get("/", getNutritionPlans);
 router.get("/:id", getNutritionPlan);
 
 // Trainer-only routes
