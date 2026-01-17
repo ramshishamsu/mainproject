@@ -110,7 +110,8 @@ export const getNutritionPlan = async (req, res) => {
     const trainer = await Trainer.findOne({ userId: req.user._id });
     console.log('Is user a trainer?', !!trainer);
     
-    if (!trainer && plan.clientId.toString() !== req.user._id.toString()) {
+    // Fix clientId mismatch for both trainers and users
+    if (plan.clientId.toString() !== req.user._id.toString()) {
       console.log('BEFORE FIX - clientId mismatch:');
       console.log('  Plan clientId:', plan.clientId.toString());
       console.log('  User ID:', req.user._id.toString());
@@ -314,7 +315,8 @@ export const getClientNutritionLogs = async (req, res) => {
     const trainer = await Trainer.findOne({ userId: req.user._id });
     console.log('Is user a trainer?', !!trainer);
     
-    if (!trainer && plan.clientId.toString() !== req.user._id.toString()) {
+    // Fix clientId mismatch for both trainers and users
+    if (plan.clientId.toString() !== req.user._id.toString()) {
       console.log('BEFORE FIX - clientId mismatch (LOGS):');
       console.log('  Plan clientId:', plan.clientId.toString());
       console.log('  User ID:', req.user._id.toString());
