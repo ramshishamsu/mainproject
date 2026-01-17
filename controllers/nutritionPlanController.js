@@ -277,8 +277,19 @@ export const getNutritionPlans = async (req, res) => {
       name: p.name,
       clientId: p.clientId,
       trainerId: p.trainerId,
-      userId: req.user._id
+      currentUserId: req.user._id
     })));
+
+    // TEMPORARY FIX: Update the nutrition plan to be assigned to current user
+    if (allPlans.length > 0 && !trainer) {
+      const plan = allPlans[0];
+      if (plan.clientId.toString() !== req.user._id.toString()) {
+        console.log('Updating nutrition plan to be assigned to current user...');
+        plan.clientId = req.user._id;
+        await plan.save();
+        console.log('Nutrition plan updated successfully');
+      }
+    }
 
     const nutritionPlans = await NutritionPlan.find(query)
       .populate(trainer ? 'clientId' : 'trainerId', trainer ? 'name email profileImage' : 'name email')
