@@ -16,6 +16,7 @@ const router = express.Router();
 
 // Test route
 router.get("/test", (req, res) => {
+  console.log("Nutrition plan test route hit!");
   res.json({ message: "Nutrition plan routes working!" });
 });
 
@@ -23,8 +24,15 @@ router.get("/test", (req, res) => {
 router.use(protect);
 
 // Universal routes - work for both trainers and users
-router.get("/", getNutritionPlans);
-router.get("/:id", getNutritionPlan);
+router.get("/", (req, res) => {
+  console.log("GET /nutrition-plans hit by user:", req.user._id);
+  getNutritionPlans(req, res);
+});
+
+router.get("/:id", (req, res) => {
+  console.log("GET /nutrition-plans/:id hit:", req.params.id);
+  getNutritionPlan(req, res);
+});
 
 // Trainer-only routes
 router.post("/", createNutritionPlan);
