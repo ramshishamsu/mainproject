@@ -270,6 +270,16 @@ export const getNutritionPlans = async (req, res) => {
 
     if (status) query.status = status;
 
+    // Debug: Show all nutrition plans in system
+    const allPlans = await NutritionPlan.find({});
+    console.log('All nutrition plans in system:', allPlans.map(p => ({
+      id: p._id,
+      name: p.name,
+      clientId: p.clientId,
+      trainerId: p.trainerId,
+      userId: req.user._id
+    })));
+
     const nutritionPlans = await NutritionPlan.find(query)
       .populate(trainer ? 'clientId' : 'trainerId', trainer ? 'name email profileImage' : 'name email')
       .sort({ createdAt: -1 })
@@ -279,6 +289,7 @@ export const getNutritionPlans = async (req, res) => {
     const total = await NutritionPlan.countDocuments(query);
 
     console.log(`Found ${nutritionPlans.length} nutrition plans for ${trainer ? 'trainer' : 'user'} ${req.user._id}`);
+    console.log('Query used:', query);
 
     res.json({
       nutritionPlans,
