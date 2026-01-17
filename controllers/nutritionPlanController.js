@@ -86,21 +86,39 @@ export const createNutritionPlan = async (req, res) => {
 ================================ */
 export const getNutritionPlan = async (req, res) => {
   try {
+    console.log('=== GET NUTRITION PLAN DEBUG ===');
+    console.log('Requested planId:', req.params.id);
+    console.log('Current user ID:', req.user._id);
+    
     const plan = await NutritionPlan.findById(req.params.id)
       .populate("clientId", "name email")
       .populate("trainerId", "name email");
 
     if (!plan) {
+      console.log('Plan not found with ID:', req.params.id);
       return res.status(404).json({ message: "Nutrition plan not found" });
     }
 
+    console.log('Found plan:', {
+      id: plan._id,
+      name: plan.name,
+      clientId: plan.clientId,
+      trainerId: plan.trainerId
+    });
+
     // TEMPORARY FIX: Update the nutrition plan to be assigned to current user if it's not
     const trainer = await Trainer.findOne({ userId: req.user._id });
+    console.log('Is user a trainer?', !!trainer);
+    
     if (!trainer && plan.clientId.toString() !== req.user._id.toString()) {
+      console.log('BEFORE FIX - clientId mismatch:');
+      console.log('  Plan clientId:', plan.clientId.toString());
+      console.log('  User ID:', req.user._id.toString());
       console.log('Updating nutrition plan clientId to match current user...');
       plan.clientId = req.user._id;
       await plan.save();
-      console.log('Nutrition plan updated successfully');
+      console.log('AFTER FIX - clientId updated successfully');
+      console.log('New clientId:', plan.clientId.toString());
     }
 
     // ✅ ALLOW TRAINER OR CLIENT ONLY (AFTER clientId fix)
@@ -110,12 +128,22 @@ export const getNutritionPlan = async (req, res) => {
     const isClient =
       plan.clientId?.toString() === req.user._id.toString();
 
+    console.log('Authorization check:');
+    console.log('  isTrainer:', isTrainer);
+    console.log('  isClient:', isClient);
+    console.log('  plan.trainerId?.userId:', plan.trainerId?.userId?.toString());
+    console.log('  plan.clientId:', plan.clientId?.toString());
+    console.log('  req.user._id:', req.user._id.toString());
+
     if (!isTrainer && !isClient) {
+      console.log('ACCESS DENIED - Unauthorized');
       return res.status(403).json({ message: "Unauthorized access" });
     }
 
+    console.log('ACCESS GRANTED - Returning plan');
     res.json({ nutritionPlan: plan });
   } catch (err) {
+    console.error('Error in getNutritionPlan:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -264,31 +292,59 @@ export const createNutritionLogForUser = async (req, res) => {
 ================================ */
 export const getClientNutritionLogs = async (req, res) => {
   try {
+    console.log('=== GET NUTRITION LOGS DEBUG ===');
+    console.log('Requested planId:', req.params.planId);
+    console.log('Current user ID:', req.user._id);
+    
     const plan = await NutritionPlan.findById(req.params.planId);
 
     if (!plan) {
+      console.log('Plan not found with ID:', req.params.planId);
       return res.status(404).json({ message: "Plan not found" });
     }
 
+    console.log('Found plan for logs:', {
+      id: plan._id,
+      name: plan.name,
+      clientId: plan.clientId,
+      trainerId: plan.trainerId
+    });
+
     // TEMPORARY FIX: Update the nutrition plan to be assigned to current user if it's not
     const trainer = await Trainer.findOne({ userId: req.user._id });
+    console.log('Is user a trainer?', !!trainer);
+    
     if (!trainer && plan.clientId.toString() !== req.user._id.toString()) {
+      console.log('BEFORE FIX - clientId mismatch (LOGS):');
+      console.log('  Plan clientId:', plan.clientId.toString());
+      console.log('  User ID:', req.user._id.toString());
       console.log('Updating nutrition plan clientId to match current user (logs endpoint)...');
       plan.clientId = req.user._id;
       await plan.save();
-      console.log('Nutrition plan updated successfully for logs');
+      console.log('AFTER FIX - clientId updated successfully for logs');
+      console.log('New clientId:', plan.clientId.toString());
     }
 
     // ✅ Only owner client or trainer (AFTER clientId fix)
+    console.log('Authorization check (LOGS):');
+    console.log('  plan.clientId:', plan.clientId.toString());
+    console.log('  plan.trainerId:', plan.trainerId.toString());
+    console.log('  req.user._id:', req.user._id.toString());
+    console.log('  clientId match:', plan.clientId.toString() === req.user._id.toString());
+    console.log('  trainerId match:', plan.trainerId.toString() === req.user._id.toString());
+
     if (
       plan.clientId.toString() !== req.user._id.toString() &&
       plan.trainerId.toString() !== req.user._id.toString()
     ) {
+      console.log('ACCESS DENIED - Unauthorized (LOGS)');
       return res.status(403).json({ message: "Unauthorized" });
     }
 
+    console.log('ACCESS GRANTED - Returning logs');
     res.json({ logs: plan.clientLogs || [] });
   } catch (err) {
+    console.error('Error in getClientNutritionLogs:', err);
     res.status(500).json({ message: err.message });
   }
 };
