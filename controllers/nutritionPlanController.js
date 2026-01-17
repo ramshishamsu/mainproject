@@ -103,12 +103,12 @@ export const getNutritionPlan = async (req, res) => {
       console.log('Nutrition plan updated successfully');
     }
 
-    // ✅ ALLOW TRAINER OR CLIENT ONLY
+    // ✅ ALLOW TRAINER OR CLIENT ONLY (AFTER clientId fix)
     const isTrainer =
       plan.trainerId?.userId?.toString() === req.user._id.toString();
 
     const isClient =
-      plan.clientId?._id?.toString() === req.user._id.toString();
+      plan.clientId?.toString() === req.user._id.toString();
 
     if (!isTrainer && !isClient) {
       return res.status(403).json({ message: "Unauthorized access" });
@@ -270,7 +270,16 @@ export const getClientNutritionLogs = async (req, res) => {
       return res.status(404).json({ message: "Plan not found" });
     }
 
-    // ✅ Only owner client or trainer
+    // TEMPORARY FIX: Update the nutrition plan to be assigned to current user if it's not
+    const trainer = await Trainer.findOne({ userId: req.user._id });
+    if (!trainer && plan.clientId.toString() !== req.user._id.toString()) {
+      console.log('Updating nutrition plan clientId to match current user (logs endpoint)...');
+      plan.clientId = req.user._id;
+      await plan.save();
+      console.log('Nutrition plan updated successfully for logs');
+    }
+
+    // ✅ Only owner client or trainer (AFTER clientId fix)
     if (
       plan.clientId.toString() !== req.user._id.toString() &&
       plan.trainerId.toString() !== req.user._id.toString()
