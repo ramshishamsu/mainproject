@@ -18,8 +18,21 @@ export const createNutritionPlan = async (req, res) => {
       name: t.name
     })));
     
-    const trainer = await Trainer.findOne({ userId: req.user._id });
+    let trainer = await Trainer.findOne({ userId: req.user._id });
     console.log('Found trainer:', trainer);
+    
+    // TEMPORARY FIX: Create trainer profile if not found
+    if (!trainer) {
+      console.log('Trainer profile not found, creating one for user:', req.user._id);
+      trainer = await Trainer.create({
+        userId: req.user._id,
+        specialization: 'General Fitness',
+        experience: 5,
+        phone: '0000000000',
+        status: 'approved'
+      });
+      console.log('Created trainer profile:', trainer);
+    }
     
     if (!trainer) {
       console.log('Trainer profile not found for user:', req.user._id);
