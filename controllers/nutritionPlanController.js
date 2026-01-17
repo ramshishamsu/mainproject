@@ -248,6 +248,52 @@ export const getClientNutritionLogs = async (req, res) => {
   }
 };
 
+/* ================================
+   GET NUTRITION PLANS FOR USER
+================================ */
+export const getNutritionPlans = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Check if user is trainer or regular user
+    const trainer = await Trainer.findOne({ userId: req.user._id });
+    
+    let query;
+    if (trainer) {
+      // Trainer sees plans they created
+      query = { trainerId: trainer._id };
+    } else {
+      // User sees plans assigned to them
+      query = { clientId: req.user._id };
+    }
+
+    if (status) query.status = status;
+
+    const nutritionPlans = await NutritionPlan.find(query)
+      .populate(trainer ? 'clientId' : 'trainerId', trainer ? 'name email profileImage' : 'name email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await NutritionPlan.countDocuments(query);
+
+    console.log(`Found ${nutritionPlans.length} nutrition plans for ${trainer ? 'trainer' : 'user'} ${req.user._id}`);
+
+    res.json({
+      nutritionPlans,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching nutrition plans:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 /* ================================
    GET PLAN STATS
