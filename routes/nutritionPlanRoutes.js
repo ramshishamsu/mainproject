@@ -14,6 +14,11 @@ import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
+// Test route
+router.get("/test", (req, res) => {
+  res.json({ message: "Nutrition plan routes working!" });
+});
+
 // Apply authentication middleware to all routes
 router.use(protect);
 
