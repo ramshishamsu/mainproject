@@ -247,8 +247,12 @@ export const getMyWorkouts = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+    console.log(`Found ${workouts.length} workouts for user ${req.user._id}`);
+    console.log('Workouts:', workouts.map(w => ({ id: w._id, title: w.title, user: w.user, trainer: w.trainer })));
+
     res.json(workouts);
   } catch (error) {
+    console.error('Error in getMyWorkouts:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -344,6 +348,13 @@ export const assignWorkout = async (req, res) => {
       ),
       totalDuration: 0,
       completed: false,
+    });
+
+    console.log('Workout assigned:', {
+      workoutId: workout._id,
+      user: user,
+      trainer: trainer._id,
+      title: exercise
     });
 
     res.status(201).json({
