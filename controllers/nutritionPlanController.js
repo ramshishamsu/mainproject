@@ -7,8 +7,22 @@ import User from "../models/User.js";
 ================================ */
 export const createNutritionPlan = async (req, res) => {
   try {
+    console.log('Creating nutrition plan for user:', req.user._id);
+    console.log('User object:', req.user);
+    
+    // Debug: Check all trainers in database
+    const allTrainers = await Trainer.find({});
+    console.log('All trainers in database:', allTrainers.map(t => ({
+      id: t._id,
+      userId: t.userId,
+      name: t.name
+    })));
+    
     const trainer = await Trainer.findOne({ userId: req.user._id });
+    console.log('Found trainer:', trainer);
+    
     if (!trainer) {
+      console.log('Trainer profile not found for user:', req.user._id);
       return res.status(403).json({ message: "Trainer profile not found" });
     }
 
