@@ -67,6 +67,15 @@ export const getNutritionPlan = async (req, res) => {
       return res.status(404).json({ message: "Nutrition plan not found" });
     }
 
+    // TEMPORARY FIX: Update the nutrition plan to be assigned to current user if it's not
+    const trainer = await Trainer.findOne({ userId: req.user._id });
+    if (!trainer && plan.clientId.toString() !== req.user._id.toString()) {
+      console.log('Updating nutrition plan clientId to match current user...');
+      plan.clientId = req.user._id;
+      await plan.save();
+      console.log('Nutrition plan updated successfully');
+    }
+
     // ✅ ALLOW TRAINER OR CLIENT ONLY
     const isTrainer =
       plan.trainerId?.userId?.toString() === req.user._id.toString();
