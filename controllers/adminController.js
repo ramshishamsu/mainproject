@@ -129,18 +129,17 @@ export const blockUnblockUser = async (req, res) => {
       });
     }
 
-    // Toggle block status
-    user.isBlocked = !user.isBlocked;
+    // Toggle block status using status field
+    user.status = user.status === 'blocked' ? 'active' : 'blocked';
     await user.save();
 
     res.status(200).json({
-      message: "User status updated",
-      isBlocked: user.isBlocked
+      message: `User ${user.status === 'blocked' ? 'blocked' : 'unblocked'} successfully`,
+      status: user.status
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message
-    });
+    console.error("BLOCK/UNBLOCK USER ERROR ❌", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
