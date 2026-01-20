@@ -58,6 +58,11 @@ router.get("/users", protect, isTrainer, getTrainerUsers);
 // Return trainer's assigned clients (route: GET /api/trainers/clients)
 router.get("/clients", protect, isTrainer, getTrainerClients);
 
+/* TEST ENDPOINT */
+router.get("/test", (req, res) => {
+  res.json({ message: "Trainer routes working!" });
+});
+
 /* ADMIN APPROVE TRAINER */
 router.put("/:id/approve", protect, adminOnly, approveTrainer);
 
