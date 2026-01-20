@@ -1,5 +1,5 @@
 import express from "express";
-import { getProfile, updateProfile, getUserProfileForTrainer, getAllUsers, updateUserStatus } from "../controllers/userController.js";
+import { getProfile, updateProfile, getUserProfileForTrainer, getAllUsers, updateUserStatus, blockUnblockUser } from "../controllers/userController.js";
 import { protect, isTrainer, isAdmin, isTrainerOrAdmin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -30,6 +30,14 @@ router.put(
   protect,
   isAdmin,
   updateUserStatus
+);
+
+// Block/Unblock user (for admins only)
+router.put(
+  "/:id/block",
+  protect,
+  isAdmin,
+  blockUnblockUser
 );
 
 export default router;

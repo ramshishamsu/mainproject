@@ -170,18 +170,9 @@ export const updateUserStatus = async (req, res) => {
     user.status = status;
     await user.save();
     
-    res.status(200).json({
-      message: "User status updated successfully",
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status
-      }
-    });
+    res.json({ message: "User status updated successfully", user });
   } catch (error) {
-    console.error("UPDATE USER STATUS ERROR ❌", error);
+    res.status(500).json({ message: error.message });
     res.status(500).json({ message: "Failed to update user status" });
   }
 };
