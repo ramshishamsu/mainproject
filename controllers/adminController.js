@@ -70,6 +70,10 @@ export const getAdminStats = async (req, res) => {
 */
 export const getAllUsers = async (req, res) => {
   try {
+    console.log("ADMIN GET ALL USERS HIT ✅");
+    console.log("QUERY PARAMS:", req.query);
+    console.log("USER:", req.user);
+    
     const { page = 1, limit = 10, search, role, status } = req.query;
     
     const query = {};
@@ -82,6 +86,8 @@ export const getAllUsers = async (req, res) => {
     if (role) query.role = role;
     if (status) query.status = status;
 
+    console.log("BUILT QUERY:", query);
+
     const users = await User.find(query)
       .select("-password")
       .sort({ createdAt: -1 })
@@ -90,9 +96,12 @@ export const getAllUsers = async (req, res) => {
 
     const total = await User.countDocuments(query);
 
+    console.log("USERS FOUND:", users.length);
+    console.log("TOTAL USERS:", total);
+
     res.json({
       users,
-      pagination: {
+      pages: {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
@@ -100,6 +109,7 @@ export const getAllUsers = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("ADMIN GET ALL USERS ERROR ❌", error);
     res.status(500).json({ message: error.message });
   }
 };
