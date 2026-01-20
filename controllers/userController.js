@@ -173,6 +173,33 @@ export const updateUserStatus = async (req, res) => {
     res.json({ message: "User status updated successfully", user });
   } catch (error) {
     res.status(500).json({ message: error.message });
-    res.status(500).json({ message: "Failed to update user status" });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| BLOCK/UNBLOCK USER (FOR ADMINS)
+|--------------------------------------------------------------------------
+*/
+export const blockUnblockUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Toggle block status
+    user.status = user.status === 'blocked' ? 'active' : 'blocked';
+    await user.save();
+    
+    res.json({ 
+      message: `User ${user.status === 'blocked' ? 'blocked' : 'unblocked'} successfully`,
+      status: user.status 
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
