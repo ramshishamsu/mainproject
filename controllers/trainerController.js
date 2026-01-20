@@ -302,7 +302,7 @@ export const getTrainerUsers = async (req, res) => {
   try {
     // If ?all=true return all registered users (limited fields)
     if (req.query.all === "true") {
-      const users = await User.find({ role: "user" }).select("name email goal");
+      const users = await User.find({ role: "user" }).select("name email fitnessGoal status profileImage age height weight");
       return res.status(200).json(users);
     }
 
@@ -315,7 +315,7 @@ export const getTrainerUsers = async (req, res) => {
     // Find workouts assigned by this trainer
     const workouts = await Workout.find({
       trainer: trainer._id,
-    }).populate("user", "name email");
+    }).populate("user", "name email fitnessGoal status profileImage");
 
     // Remove duplicate users
     const uniqueUsers = new Map();
@@ -328,8 +328,8 @@ export const getTrainerUsers = async (req, res) => {
 
     res.status(200).json(Array.from(uniqueUsers.values()));
   } catch (error) {
-    console.error("Get Trainer Users Error:", error);
-    res.status(500).json({ message: "Failed to fetch trainer users" });
+    console.error("GET TRAINER USERS ERROR ", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
