@@ -23,7 +23,8 @@ export const getAdminStats = async (req, res) => {
       status: "pending"
     });
 
-    const appointments = await Appointment.countDocuments();
+    // Remove Appointment model reference - use Workout count instead
+    const appointments = await Workout.countDocuments();
 
     const payments = await Payment.countDocuments({
       paymentStatus: "success"
@@ -48,6 +49,7 @@ export const getAdminStats = async (req, res) => {
       totalUsers,
       totalTrainers,
       pendingTrainers,
+      appointments,
       payments,
       pendingWithdrawals,
       plans,
@@ -56,7 +58,7 @@ export const getAdminStats = async (req, res) => {
       monthlyRevenue
     });
   } catch (error) {
-    console.error('Error in getAdminStats:', error);
+    console.error("GET ADMIN STATS ERROR ❌", error);
     res.status(500).json({ message: error.message });
   }
 };
