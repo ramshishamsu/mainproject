@@ -300,9 +300,15 @@ export const getTrainerEarnings = async (req, res) => {
 };
 export const getTrainerUsers = async (req, res) => {
   try {
+    console.log("GET TRAINER USERS HIT ✅");
+    console.log("QUERY PARAMS:", req.query);
+    console.log("USER:", req.user);
+    
     // If ?all=true return all registered users (limited fields)
     if (req.query.all === "true") {
+      console.log("FETCHING ALL USERS...");
       const users = await User.find({ role: "user" }).select("name email fitnessGoal status profileImage age height weight");
+      console.log("USERS FOUND:", users.length);
       return res.status(200).json(users);
     }
 

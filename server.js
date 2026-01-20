@@ -70,7 +70,7 @@ connectDB().then(() => {
 
   /* ================= DEFAULT ================= */
   app.get("/", (req, res) => {
-    res.send("// 🚀 Fitness Management System API - Updated with trainer users fix Running 🚀");
+    res.send("// 🚀 Fitness Management System API - Trainer Users Fix Deployed - v2 Running 🚀");
   });
 
   /* ================= ERROR HANDLER ================= */
