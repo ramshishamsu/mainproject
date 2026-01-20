@@ -38,10 +38,27 @@ export const adminOnly = (req, res, next) => {
   }
   next();
 };
+
+// ✅ ADMIN MIDDLEWARE (for consistency)
+export const isAdmin = (req, res, next) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admin access only" });
+  }
+  next();
+};
+
 // ✅ TRAINER ONLY (🔥 THIS WAS MISSING)
 export const isTrainer = (req, res, next) => {
   if (req.user.role !== "trainer") {
     return res.status(403).json({ message: "Trainer access only" });
+  }
+  next();
+};
+
+// ✅ TRAINER OR ADMIN (for user management)
+export const isTrainerOrAdmin = (req, res, next) => {
+  if (req.user.role !== "trainer" && req.user.role !== "admin") {
+    return res.status(403).json({ message: "Trainer or Admin access only" });
   }
   next();
 };

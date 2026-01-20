@@ -88,3 +88,100 @@ export const getUserProfileForTrainer = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+/*
+|--------------------------------------------------------------------------
+| GET ALL USERS (FOR TRAINERS AND ADMINS)
+|--------------------------------------------------------------------------
+*/
+export const getAllUsers = async (req, res) => {
+  try {
+    const { role, status, page = 1, limit = 10, search } = req.query;
+    
+    // Build filter object
+    const filter = {};
+    
+    // Filter by role if specified
+    if (role) {
+      filter.role = role;
+    }
+    
+    // Filter by status if specified
+    if (status) {
+      filter.status = status;
+    }
+    
+    // Search by name or email if specified
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    // Pagination
+    const skip = (page - 1) * limit;
+    
+    // Get users with pagination
+    const users = await User.find(filter)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination
+    const total = await User.countDocuments(filter);
+    
+    res.status(200).json({
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error("GET ALL USERS ERROR ❌", error);
+    res.status(500).json({ message: "Failed to fetch users" });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE USER STATUS (FOR ADMINS)
+|--------------------------------------------------------------------------
+*/
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['approved', 'pending', 'suspended'].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+    
+    const user = await User.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    user.status = status;
+    await user.save();
+    
+    res.status(200).json({
+      message: "User status updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    console.error("UPDATE USER STATUS ERROR ❌", error);
+    res.status(500).json({ message: "Failed to update user status" });
+  }
+};
