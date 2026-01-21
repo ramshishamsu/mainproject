@@ -254,6 +254,34 @@ export const createNutritionLogForUser = async (req, res) => {
 };
 
 /* ================================
+   GET ALL USER NUTRITION LOGS
+================================ */
+export const getUserNutritionLogs = async (req, res) => {
+  try {
+    // Find all nutrition plans for this user
+    const plans = await NutritionPlan.find({ 
+      clientId: req.user._id 
+    }).select('clientLogs');
+
+    // Collect all logs from all plans
+    const allLogs = [];
+    plans.forEach(plan => {
+      if (plan.clientLogs && plan.clientLogs.length > 0) {
+        allLogs.push(...plan.clientLogs);
+      }
+    });
+
+    // Sort logs by date (newest first)
+    allLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.json({ nutritionLogs: allLogs });
+  } catch (err) {
+    console.error("getUserNutritionLogs error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ================================
    GET CLIENT LOGS
 ================================ */
 export const getClientNutritionLogs = async (req, res) => {
