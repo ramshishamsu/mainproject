@@ -258,6 +258,12 @@ export const createNutritionLogForUser = async (req, res) => {
 ================================ */
 export const getUserNutritionLogs = async (req, res) => {
   try {
+    // Check if user is authenticated
+    if (!req.user || !req.user._id) {
+      console.log("getUserNutritionLogs: No user found in request");
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
     // Find all nutrition plans for this user
     const plans = await NutritionPlan.find({ 
       clientId: req.user._id 
