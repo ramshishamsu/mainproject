@@ -47,7 +47,7 @@ router.get("/:planId/stats", getNutritionPlanStats);
 router.post("/:planId/trainer-log", createNutritionLogForUser);
 
 // Dedicated logs endpoint for user dashboard
-router.get("/logs", (req, res) => {
+router.get("/logs", protect, (req, res) => {
   console.log("GET /nutrition-plans/logs hit by user:", req.user._id);
   getUserNutritionLogs(req, res);
 });
