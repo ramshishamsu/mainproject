@@ -9,10 +9,15 @@ const messageSchema = new mongoose.Schema(
     },
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User", 
       required: true
     },
-    text: {
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      default: () => new mongoose.Types.ObjectId()
+    },
+    content: {
       type: String,
       required: true
     }

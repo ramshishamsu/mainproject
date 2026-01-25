@@ -3,11 +3,15 @@ import {
   sendMessage, 
   getMessages,
   getConversations,
-  getConversationMessages
+  getConversationMessages,
+  createConversation
 } from "../controllers/messageController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
+
+// Create new conversation
+router.post("/conversation", protect, createConversation);
 
 // Send message
 router.post("/", protect, sendMessage);
