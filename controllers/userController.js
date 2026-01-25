@@ -1,5 +1,11 @@
 import User from "../models/User.js";
 import Plan from "../models/Plan.js";
+import Payment from "../models/Payment.js";
+import Workout from "../models/Workout.js";
+import Goal from "../models/Goal.js";
+import Progress from "../models/Progress.js";
+import NutritionPlan from "../models/NutritionPlan.js";
+
 /*
 |--------------------------------------------------------------------------
 | GET LOGGED-IN USER PROFILE
@@ -284,10 +290,9 @@ export const getUserSubscription = async (req, res) => {
 */
 export const getUserPayments = async (req, res) => {
   try {
-    const Payment = require("../models/Payment.js");
     const payments = await Payment.find({ userId: req.user._id })
       .sort({ createdAt: -1 });
-    res.json(payments || []); // Return empty array if no payments
+    res.json(payments || []);
   } catch (error) {
     console.error("getUserPayments error:", error);
     res.status(500).json({ message: error.message });
@@ -296,11 +301,10 @@ export const getUserPayments = async (req, res) => {
 
 export const getUserWorkouts = async (req, res) => {
   try {
-    const Workout = require("../models/Workout.js");
-    const workouts = await Workout.find({ user: req.user._id })
-      .populate('trainer', 'name')
+    const workouts = await Workout.find({ userId: req.user._id })  // Fixed: user -> userId
+      .populate('trainerId', 'name')  // Fixed: trainer -> trainerId
       .sort({ createdAt: -1 });
-    res.json(workouts || []); // Return empty array if no workouts
+    res.json(workouts || []);
   } catch (error) {
     console.error("getUserWorkouts error:", error);
     res.status(500).json({ message: error.message });
@@ -309,10 +313,9 @@ export const getUserWorkouts = async (req, res) => {
 
 export const getUserGoals = async (req, res) => {
   try {
-    const Goal = require("../models/Goal.js");
-    const goals = await Goal.find({ user: req.user._id })
+    const goals = await Goal.find({ userId: req.user._id })  // Fixed: user -> userId
       .sort({ createdAt: -1 });
-    res.json(goals || []); // Return empty array if no goals
+    res.json(goals || []);
   } catch (error) {
     console.error("getUserGoals error:", error);
     res.status(500).json({ message: error.message });
@@ -321,10 +324,9 @@ export const getUserGoals = async (req, res) => {
 
 export const getUserProgress = async (req, res) => {
   try {
-    const Progress = require("../models/Progress.js");
-    const progress = await Progress.find({ user: req.user._id })
+    const progress = await Progress.find({ userId: req.user._id })  // Fixed: user -> userId
       .sort({ createdAt: -1 });
-    res.json(progress || []); // Return empty array if no progress
+    res.json(progress || []);
   } catch (error) {
     console.error("getUserProgress error:", error);
     res.status(500).json({ message: error.message });
@@ -333,10 +335,9 @@ export const getUserProgress = async (req, res) => {
 
 export const getUserNutritionLogs = async (req, res) => {
   try {
-    const NutritionPlan = require("../models/NutritionPlan.js");
-    const plans = await NutritionPlan.find({ client: req.user._id })
+    const plans = await NutritionPlan.find({ clientId: req.user._id })  // Fixed: client -> clientId
       .sort({ createdAt: -1 });
-    res.json({ nutritionLogs: plans || [] }); // Return empty array if no plans
+    res.json(plans || []);  // Fixed: Return array directly
   } catch (error) {
     console.error("getUserNutritionLogs error:", error);
     res.status(500).json({ message: error.message });
