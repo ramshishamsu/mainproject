@@ -17,7 +17,7 @@ router.post("/", createRating);
 router.get("/my", getMyRatings);
 
 // Feedback routes
-router.post("/feedback", createFeedback);
-router.get("/feedback/my", getMyFeedback);
+router.post("/", createFeedback);
+router.get("/my", getMyFeedback);
 
 export default router;

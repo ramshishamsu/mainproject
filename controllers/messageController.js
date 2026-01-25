@@ -2,18 +2,20 @@ import Message from "../models/Message.js";
 
 // Send message
 export const sendMessage = async (req, res) => {
-  const { conversationId, content } = req.body;
+    const { conversationId, content, receiverId } = req.body;
 
-  if (!conversationId || !content) {
-    return res.status(400).json({ message: "Conversation ID and content are required" });
+    if (!conversationId || !content || !receiverId) {
+    return res.status(400).json({ message: "Conversation ID, receiver ID, and content are required" });
   }
 
   const message = await Message.create({
     sender: req.user._id,
+    receiver: receiverId,
     conversationId,
     content
   });
-
+  // Populate sender info for response
+  await message.populate('sender', 'name userId');
   res.status(201).json(message);
 };
 

@@ -8,7 +8,8 @@ import {
   approveTrainer,
   getTrainerUsers,
   getTrainerClients,
-  uploadVerificationDoc
+  uploadVerificationDoc,
+  getAssignedTrainer 
 } from "../controllers/trainerController.js";
 
 import { protect, isTrainer, adminOnly, trainerApprovedOnly } from "../middlewares/authMiddleware.js";
@@ -25,6 +26,9 @@ router.post(
 
 /* GET APPROVED TRAINERS */
 router.get("/", getTrainers);
+
+/* GET ASSIGNED TRAINER FOR USER */
+router.get("/assigned-trainer", protect, getAssignedTrainer);  // ADD THIS
 
 /* TRAINER PROFILE */
 router.get("/profile", protect, isTrainer, getTrainerProfile);

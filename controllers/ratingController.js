@@ -18,7 +18,7 @@ export const createRating = async (req, res) => {
     }
 
     const newRating = new Rating({
-      user: req.user.id,
+          user: req.user._id,
       trainer: trainerId,
       rating,
       comment,
@@ -53,7 +53,7 @@ export const createRating = async (req, res) => {
 */
 export const getMyRatings = async (req, res) => {
   try {
-    const ratings = await Rating.find({ user: req.user.id })
+        const ratings = await Rating.find({ user: req.user._id })
       .populate('trainer', 'userId.name specialization')
       .sort({ date: -1 });
 
@@ -82,7 +82,7 @@ export const createFeedback = async (req, res) => {
     }
 
     const newFeedback = new Feedback({
-      user: req.user.id,
+          user: req.user._id,
       trainer: trainerId || null,
       service,
       rating,
@@ -108,7 +108,7 @@ export const createFeedback = async (req, res) => {
 */
 export const getMyFeedback = async (req, res) => {
   try {
-    const feedback = await Feedback.find({ user: req.user.id })
+        const feedback = await Feedback.find({ user: req.user._id })
       .populate('trainer', 'userId.name specialization')
       .sort({ date: -1 });
 

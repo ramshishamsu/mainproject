@@ -3,7 +3,10 @@ import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
   let token;
-
+      console.log("=== AUTH DEBUG ===");
+  console.log("Request URL:", req.originalUrl);
+  console.log("Request Method:", req.method);
+  console.log("Headers:", req.headers);
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")

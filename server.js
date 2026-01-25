@@ -24,6 +24,7 @@ import goalRoutes from "./routes/goalRoutes.js";
 import ratingRoutes from "./routes/ratingRoutes.js"; // NEW ROUTE
 import nutritionPlanRoutes from "./routes/nutritionPlanRoutes.js";
 
+
 // Start server with database connection
 connectDB().then(() => {
   console.log("🚀 Starting server after successful DB connection");
@@ -67,6 +68,7 @@ connectDB().then(() => {
   app.use("/api/reviews", reviewRoutes);
   app.use("/api/plans", planRoutes);
   app.use("/api/upload", uploadRoutes);
+  
 
   /* ================= DEFAULT ================= */
   app.get("/", (req, res) => {

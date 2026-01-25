@@ -359,4 +359,26 @@ export const getTrainerClients = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch users" });
   }
 };
+/*
+|--------------------------------------------------------------------------
+| Get Assigned Trainer for User
+|--------------------------------------------------------------------------
+*/
+export const getAssignedTrainer = async (req, res) => {
+  try {
+    // For now, return a mock trainer or first available trainer
+    // In a real app, this would check user's assigned trainer
+    const trainer = await Trainer.findOne({ status: 'approved' })
+      .populate('userId', 'name email')
+      .select('name specialization experience profileImage');
 
+    if (!trainer) {
+      return res.status(404).json({ message: "No assigned trainer found" });
+    }
+
+    res.status(200).json(trainer);
+  } catch (error) {
+    console.error("Get Assigned Trainer Error:", error);
+    res.status(500).json({ message: "Failed to fetch assigned trainer" });
+  }
+};

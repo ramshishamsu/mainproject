@@ -10,7 +10,7 @@ import { protect } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 // Send message
-router.post("/send", protect, sendMessage);
+router.post("/", protect, sendMessage);
 
 // Get conversations
 router.get("/conversations", protect, getConversations);
