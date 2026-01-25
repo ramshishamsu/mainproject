@@ -9,7 +9,8 @@ import {
   getTrainerUsers,
   getTrainerClients,
   uploadVerificationDoc,
-  getAssignedTrainer 
+  getAssignedTrainer,
+   updateProfileImage  
 } from "../controllers/trainerController.js";
 
 import { protect, isTrainer, adminOnly, trainerApprovedOnly } from "../middlewares/authMiddleware.js";
@@ -40,7 +41,8 @@ router.put(
   upload.single("profileImage"),
   updateTrainerProfile
 );
-
+/* UPDATE PROFILE IMAGE */
+router.put("/profile-image", protect, isTrainer, updateProfileImage);
 /* UPLOAD VERIFICATION DOCUMENT */
 router.post(
   "/verify",

@@ -287,7 +287,7 @@ export const getUserPayments = async (req, res) => {
     const Payment = require("../models/Payment.js");
     const payments = await Payment.find({ userId: req.user._id })
       .sort({ createdAt: -1 });
-    res.json(payments);
+    res.json(payments || []); // Return empty array if no payments
   } catch (error) {
     console.error("getUserPayments error:", error);
     res.status(500).json({ message: error.message });
@@ -300,7 +300,7 @@ export const getUserWorkouts = async (req, res) => {
     const workouts = await Workout.find({ user: req.user._id })
       .populate('trainer', 'name')
       .sort({ createdAt: -1 });
-    res.json(workouts);
+    res.json(workouts || []); // Return empty array if no workouts
   } catch (error) {
     console.error("getUserWorkouts error:", error);
     res.status(500).json({ message: error.message });
@@ -312,7 +312,7 @@ export const getUserGoals = async (req, res) => {
     const Goal = require("../models/Goal.js");
     const goals = await Goal.find({ user: req.user._id })
       .sort({ createdAt: -1 });
-    res.json(goals);
+    res.json(goals || []); // Return empty array if no goals
   } catch (error) {
     console.error("getUserGoals error:", error);
     res.status(500).json({ message: error.message });
@@ -324,7 +324,7 @@ export const getUserProgress = async (req, res) => {
     const Progress = require("../models/Progress.js");
     const progress = await Progress.find({ user: req.user._id })
       .sort({ createdAt: -1 });
-    res.json(progress);
+    res.json(progress || []); // Return empty array if no progress
   } catch (error) {
     console.error("getUserProgress error:", error);
     res.status(500).json({ message: error.message });
@@ -336,7 +336,7 @@ export const getUserNutritionLogs = async (req, res) => {
     const NutritionPlan = require("../models/NutritionPlan.js");
     const plans = await NutritionPlan.find({ client: req.user._id })
       .sort({ createdAt: -1 });
-    res.json({ nutritionLogs: plans });
+    res.json({ nutritionLogs: plans || [] }); // Return empty array if no plans
   } catch (error) {
     console.error("getUserNutritionLogs error:", error);
     res.status(500).json({ message: error.message });

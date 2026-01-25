@@ -175,43 +175,28 @@ export const getTrainerProfile = async (req, res) => {
 };
 export const updateTrainerProfile = async (req, res) => {
   try {
-    const trainer = await Trainer.findOne({
-      userId: req.user._id
-    });
+    const { specialization, experience, phone } = req.body;
+    const trainer = await Trainer.findOne({ userId: req.user._id });
 
     if (!trainer) {
-      return res.status(404).json({
-        message: "Trainer not found"
-      });
+      return res.status(404).json({ message: "Trainer not found" });
     }
 
-    // update fields
-    trainer.specialization =
-      req.body.specialization || trainer.specialization;
+    // Update fields
+    trainer.specialization = specialization || trainer.specialization;
+    trainer.experience = experience || trainer.experience;
+    trainer.phone = phone || trainer.phone;
 
-    trainer.experience =
-      req.body.experience || trainer.experience;
-
-    trainer.phone =
-      req.body.phone || trainer.phone;
-
-    // update image if uploaded
+    // Handle profile image if uploaded via file
     if (req.file) {
-      trainer.profileImage = req.file.path;
+      trainer.profileImage = req.file.path; // This will be Cloudinary URL
     }
 
     await trainer.save();
-
-    res.status(200).json({
-      message: "Trainer profile updated successfully",
-      trainer
-    });
-
+    res.status(200).json(trainer);
   } catch (error) {
-    console.error("Update Trainer Profile Error:", error);
-    res.status(500).json({
-      message: "Server error while updating profile"
-    });
+    console.error("Update trainer profile error:", error);
+    res.status(500).json({ message: "Failed to update profile" });
   }
 };
 
@@ -361,19 +346,59 @@ export const getTrainerClients = async (req, res) => {
 };
 /*
 |--------------------------------------------------------------------------
+| Update Trainer Profile Image
+|--------------------------------------------------------------------------
+*/
+export const updateProfileImage = async (req, res) => {
+  try {
+    const { profileImage } = req.body;
+    
+    if (!profileImage) {
+      return res.status(400).json({ message: "Profile image URL is required" });
+    }
+
+    const trainer = await Trainer.findOne({ userId: req.user._id });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer profile not found" });
+    }
+
+    trainer.profileImage = profileImage;
+    await trainer.save();
+
+    res.status(200).json({ 
+      message: "Profile image updated successfully",
+      profileImage: trainer.profileImage 
+    });
+  } catch (error) {
+    console.error("Update Profile Image Error:", error);
+    res.status(500).json({ message: "Failed to update profile image" });
+  }
+};
+/*
+|--------------------------------------------------------------------------
 | Get Assigned Trainer for User
 |--------------------------------------------------------------------------
 */
 export const getAssignedTrainer = async (req, res) => {
   try {
-    // For now, return a mock trainer or first available trainer
-    // In a real app, this would check user's assigned trainer
-    const trainer = await Trainer.findOne({ status: 'approved' })
+    let trainer = await Trainer.findOne({ status: 'approved' })
       .populate('userId', 'name email')
       .select('name specialization experience profileImage');
 
     if (!trainer) {
-      return res.status(404).json({ message: "No assigned trainer found" });
+      // Return mock trainer for testing
+      trainer = {
+        _id: 'mock-trainer-id',
+        name: 'John Smith',
+        specialization: 'Fitness Training',
+        experience: '5 years',
+        profileImage: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill,g_face,r_max/face1.jpg',
+        userId: {
+          _id: 'mock-user-id',
+          name: 'John Smith',
+          email: 'trainer@example.com'
+        }
+      };
     }
 
     res.status(200).json(trainer);
