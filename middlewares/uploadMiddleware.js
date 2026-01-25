@@ -11,6 +11,7 @@ const upload = multer({
       "image/jpeg",
       "image/png", 
       "image/webp",
+      "image/avif",
       "application/pdf"
     ];
 
