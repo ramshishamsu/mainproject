@@ -1,40 +1,66 @@
 import cloudinary from "../config/cloudinary.js";
 
-/*
-|--------------------------------------------------------------------------
-| UPLOAD PROFILE IMAGE (CLOUDINARY)
-|--------------------------------------------------------------------------
-*/
 export const uploadProfileImage = async (req, res) => {
   try {
-       console.log("UPLOAD HIT ✅");
-    console.log("FILE:", req.file);
+    console.log("🚀 UPLOAD HIT - Profile image upload started");
+    
+    // Check environment variables
+    console.log("🔍 ENV CHECK:", {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "✅" : "❌ MISSING",
+      api_key: process.env.CLOUDINARY_API_KEY ? "✅" : "❌ MISSING", 
+      api_secret: process.env.CLOUDINARY_API_SECRET ? "✅" : "❌ MISSING",
+    });
+
     if (!req.file) {
-      return res.status(400).json({ message: "No image uploaded" });
+      console.error("❌ No file received in request");
+      return res.status(400).json({ 
+        success: false,
+        message: "No image uploaded" 
+      });
     }
 
-    const stream = cloudinary.uploader.upload_stream(
-      { 
-        folder: "fitness_users",
-        resource_type: "auto",  // Auto-detect file type
-        access_mode: "public",   // Make publicly accessible
-        type: "upload"          // Standard upload type
-      },
-      (error, result) => {
-        if (error) {
-                console.error("CLOUDINARY ERROR ❌", error);
-          return res.status(500).json({ message: "Cloudinary upload failed" });
-        }
-      console.log("UPLOAD SUCCESS ✅", result.secure_url);
-        res.json({
-          imageUrl: result.secure_url
-        });
-      }
-    );
+    console.log("📁 File received:", {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    });
 
-    stream.end(req.file.buffer);
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { 
+          folder: "fitness_users",
+          resource_type: "auto",
+          access_mode: "public",
+          type: "upload",
+          format: "auto"
+        },
+        (error, result) => {
+          if (error) {
+            console.error("☁️ CLOUDINARY UPLOAD ERROR:", error);
+            reject(error);
+          } else {
+            console.log("✅ CLOUDINARY UPLOAD SUCCESS:", result.secure_url);
+            resolve(result);
+          }
+        }
+      );
+
+      uploadStream.end(req.file.buffer);
+    });
+
+    res.json({
+      success: true,
+      imageUrl: result.secure_url,
+      publicId: result.public_id
+    });
+
   } catch (error) {
-    console.error("UPLOAD CONTROLLER ERROR ❌", error);
-    res.status(500).json({ message: "Image upload error" });
+    console.error("💥 UPLOAD CONTROLLER ERROR:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Image upload failed", 
+      error: error.message 
+    });
   }
 };
