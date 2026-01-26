@@ -74,6 +74,10 @@ connectDB().then(() => {
   app.get("/", (req, res) => {
     res.send("// 🚀 Fitness Management System API - USER BLOCK/UNBLOCK v4 - DEPLOYED 🚀");
   });
+  // Test route
+app.get("/api/test", (req, res) => {
+  res.json({ message: "Backend is working!", timestamp: new Date() });
+});
 
   /* ================= ERROR HANDLER ================= */
   app.use((err, req, res, next) => {

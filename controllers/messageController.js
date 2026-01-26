@@ -2,16 +2,15 @@ import Message from "../models/Message.js";
 import Trainer from "../models/Trainer.js";
 import mongoose from "mongoose";
 
-// Send message
+/* --------------------------------------------------
+   SEND MESSAGE
+-------------------------------------------------- */
 export const sendMessage = async (req, res) => {
   try {
-    const { conversationId, content, receiverId } = req.body;
+    const { conversationId, receiverId, content } = req.body;
 
-    if (!conversationId || !content || !receiverId) {
-      return res.status(400).json({ 
-        success: false,
-        message: "Conversation ID, receiver ID, and content are required" 
-      });
+    if (!conversationId || !receiverId || !content?.trim()) {
+      return res.status(400).json({ message: "Invalid message data" });
     }
 
     const message = await Message.create({
@@ -21,176 +20,122 @@ export const sendMessage = async (req, res) => {
       content
     });
 
-    // Populate sender info for response
-    await message.populate('sender', 'name email');
-    await message.populate('receiver', 'name email');
+    await message.populate("sender", "name email");
+    await message.populate("receiver", "name email");
 
-    console.log('✅ Message sent:', message._id);
     res.status(201).json(message);
   } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Create new conversation with trainer
+/* --------------------------------------------------
+   CREATE CONVERSATION
+-------------------------------------------------- */
 export const createConversation = async (req, res) => {
   try {
     const { trainerId } = req.body;
 
-    if (!trainerId) {
-      return res.status(400).json({ 
-        success: false,
-        message: "Trainer ID is required" 
-      });
-    }
+    const trainer = await Trainer.findById(trainerId).populate(
+      "userId",
+      "name email"
+    );
 
-    // Check if trainer exists
-    const trainer = await Trainer.findById(trainerId).populate('userId', 'name email');
     if (!trainer) {
-      return res.status(404).json({ 
-        success: false,
-        message: "Trainer not found" 
-      });
+      return res.status(404).json({ message: "Trainer not found" });
     }
 
-    // Create conversation ID
     const conversationId = new mongoose.Types.ObjectId();
 
-    // Create welcome message
-    const welcomeMessage = await Message.create({
+    const firstMessage = await Message.create({
       sender: req.user._id,
       receiver: trainer.userId._id,
       conversationId,
-      content: "Hi! I'm interested in your training services."
+      content: "Hi! I’d like to start training with you."
     });
 
-    await welcomeMessage.populate('sender', 'name email');
-    await welcomeMessage.populate('receiver', 'name email');
+    await firstMessage.populate("sender", "name email");
+    await firstMessage.populate("receiver", "name email");
 
-    const conversation = {
+    res.status(201).json({
       _id: conversationId,
       trainer: {
         _id: trainer._id,
         userId: trainer.userId,
         name: trainer.userId.name,
-        specialization: trainer.specialization
+        specialization: trainer.specialization || "Fitness Trainer"
       },
-      lastMessage: welcomeMessage,
-      createdAt: new Date()
-    };
-
-    console.log('✅ Conversation created:', conversationId);
-    res.status(201).json(conversation);
-  } catch (error) {
-    console.error('Create conversation error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
+      lastMessage: firstMessage
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get conversations for user
+/* --------------------------------------------------
+   GET CONVERSATIONS (SAFE & FAST)
+-------------------------------------------------- */
 export const getConversations = async (req, res) => {
   try {
-    const conversations = await Message.aggregate([
-      {
-        $match: {
-          $or: [
-            { sender: req.user._id },
-            { receiver: req.user._id }
-          ]
-        }
-      },
-      {
-        $group: {
-          _id: "$conversationId",
-          lastMessage: { $last: "$$ROOT" },
-          participants: { $addToSet: ["$sender", "$receiver"] }
-        }
-      },
-      {
-        $sort: { "lastMessage.createdAt": -1 }
-      }
-    ]);
+    const messages = await Message.find({
+      $or: [{ sender: req.user._id }, { receiver: req.user._id }]
+    })
+      .sort({ createdAt: -1 })
+      .populate("sender receiver", "name email");
 
-    // Get detailed conversation info
-    const populatedConversations = [];
-    
-    for (const conv of conversations) {
-      // Find the trainer in this conversation
-      const otherUserId = conv.participants.find(id => id.toString() !== req.user._id.toString());
-      
-      if (otherUserId) {
-        const trainer = await Trainer.findOne({ userId: otherUserId }).populate('userId', 'name email');
-        
-        if (trainer) {
-          populatedConversations.push({
-            _id: conv._id,
-            trainer: {
-              _id: trainer._id,
-              userId: trainer.userId,
-              name: trainer.userId.name,
-              specialization: trainer.specialization
-            },
-            lastMessage: conv.lastMessage,
-            createdAt: conv.lastMessage.createdAt
-          });
-        }
+    const map = new Map();
+
+    for (const msg of messages) {
+      const id = msg.conversationId.toString();
+      if (!map.has(id)) map.set(id, msg);
+    }
+
+    const conversations = [];
+
+    for (const msg of map.values()) {
+      const otherUser =
+        msg.sender._id.toString() === req.user._id.toString()
+          ? msg.receiver
+          : msg.sender;
+
+      const trainer = await Trainer.findOne({ userId: otherUser._id }).populate(
+        "userId",
+        "name email"
+      );
+
+      if (trainer) {
+        conversations.push({
+          _id: msg.conversationId,
+          trainer: {
+            _id: trainer._id,
+            userId: trainer.userId,
+            name: trainer.userId.name,
+            specialization: trainer.specialization || "Fitness Trainer"
+          },
+          lastMessage: msg
+        });
       }
     }
 
-    console.log('✅ Conversations fetched:', populatedConversations.length);
-    res.status(200).json(populatedConversations);
+    res.json(conversations);
   } catch (error) {
-    console.error('Get conversations error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get messages in a conversation
+/* --------------------------------------------------
+   GET MESSAGES (POLLING FRIENDLY)
+-------------------------------------------------- */
 export const getConversationMessages = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const messages = await Message.find({ conversationId: id })
-      .populate('sender', 'name email')
-      .populate('receiver', 'name email')
-      .sort({ createdAt: 1 });
-
-    console.log('✅ Conversation messages fetched:', messages.length);
-    res.status(200).json(messages);
-  } catch (error) {
-    console.error('Get conversation messages error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    });
-  }
-};
-
-// Get chat between two users (legacy)
-export const getMessages = async (req, res) => {
-  try {
     const messages = await Message.find({
-      $or: [
-        { sender: req.user._id, receiver: req.params.userId },
-        { sender: req.params.userId, receiver: req.user._id }
-      ]
-    }).populate('sender', 'name email')
-      .populate('receiver', 'name email')
+      conversationId: req.params.id
+    })
+      .populate("sender receiver", "name email")
       .sort({ createdAt: 1 });
 
     res.json(messages);
   } catch (error) {
-    console.error('Get messages error:', error);
     res.status(500).json({ message: error.message });
   }
 };

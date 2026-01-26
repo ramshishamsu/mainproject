@@ -9,17 +9,18 @@ const messageSchema = new mongoose.Schema(
     },
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", 
+      ref: "User",
       required: true
     },
     conversationId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      default: () => new mongoose.Types.ObjectId()
+      index: true
     },
     content: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     }
   },
   { timestamps: true }
