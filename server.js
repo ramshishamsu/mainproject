@@ -1,5 +1,5 @@
 
- // ✅ MUST BE FIRST (BEFORE ANY OTHER IMPORTS)
+// ✅ MUST BE FIRST (BEFORE ANY OTHER IMPORTS)
 
 import express from "express";
 import cors from "cors";
@@ -28,9 +28,9 @@ import nutritionPlanRoutes from "./routes/nutritionPlanRoutes.js";
 // Start server with database connection
 connectDB().then(() => {
   console.log("🚀 Starting server after successful DB connection");
-  
+
   const app = express();
-  
+
   app.use(
     cors({
       origin: [
@@ -68,16 +68,16 @@ connectDB().then(() => {
   app.use("/api/reviews", reviewRoutes);
   app.use("/api/plans", planRoutes);
   app.use("/api/upload", uploadRoutes);
-  
+
 
   /* ================= DEFAULT ================= */
   app.get("/", (req, res) => {
     res.send("// 🚀 Fitness Management System API - USER BLOCK/UNBLOCK v4 - DEPLOYED 🚀");
   });
-  // Test route
-app.get("/api/test", (req, res) => {
-  res.json({ message: "Backend is working!", timestamp: new Date() });
-});
+  // Test messaging endpoint
+  app.get("/api/messages/test", (req, res) => {
+    res.json({ message: "Messages API working!" });
+  });
 
   /* ================= ERROR HANDLER ================= */
   app.use((err, req, res, next) => {

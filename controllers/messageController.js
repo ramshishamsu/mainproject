@@ -2,9 +2,7 @@ import Message from "../models/Message.js";
 import Trainer from "../models/Trainer.js";
 import mongoose from "mongoose";
 
-/* --------------------------------------------------
-   SEND MESSAGE
--------------------------------------------------- */
+// Send message
 export const sendMessage = async (req, res) => {
   try {
     const { conversationId, receiverId, content } = req.body;
@@ -17,7 +15,7 @@ export const sendMessage = async (req, res) => {
       sender: req.user._id,
       receiver: receiverId,
       conversationId,
-      content
+      content: content.trim()
     });
 
     await message.populate("sender", "name email");
@@ -25,16 +23,19 @@ export const sendMessage = async (req, res) => {
 
     res.status(201).json(message);
   } catch (error) {
+    console.error("Send message error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-/* --------------------------------------------------
-   CREATE CONVERSATION
--------------------------------------------------- */
+// Create conversation
 export const createConversation = async (req, res) => {
   try {
     const { trainerId } = req.body;
+
+    if (!trainerId) {
+      return res.status(400).json({ message: "Trainer ID is required" });
+    }
 
     const trainer = await Trainer.findById(trainerId).populate(
       "userId",
@@ -51,7 +52,7 @@ export const createConversation = async (req, res) => {
       sender: req.user._id,
       receiver: trainer.userId._id,
       conversationId,
-      content: "Hi! I’d like to start training with you."
+      content: "Hi! I'd like to start training with you."
     });
 
     await firstMessage.populate("sender", "name email");
@@ -59,7 +60,8 @@ export const createConversation = async (req, res) => {
 
     res.status(201).json({
       _id: conversationId,
-      trainer: {
+      participant: {
+        role: "trainer",
         _id: trainer._id,
         userId: trainer.userId,
         name: trainer.userId.name,
@@ -68,13 +70,12 @@ export const createConversation = async (req, res) => {
       lastMessage: firstMessage
     });
   } catch (error) {
+    console.error("Create conversation error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-/* --------------------------------------------------
-   GET CONVERSATIONS (SAFE & FAST)
--------------------------------------------------- */
+// Get conversations - Works for both user and trainer
 export const getConversations = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -87,12 +88,9 @@ export const getConversations = async (req, res) => {
 
     const map = new Map();
 
-    // get latest message per conversation
     for (const msg of messages) {
       const id = msg.conversationId.toString();
-      if (!map.has(id)) {
-        map.set(id, msg);
-      }
+      if (!map.has(id)) map.set(id, msg);
     }
 
     const conversations = [];
@@ -103,17 +101,18 @@ export const getConversations = async (req, res) => {
           ? msg.receiver
           : msg.sender;
 
-      // check if other user is a trainer
+      // Check if other user is a trainer
       const trainer = await Trainer.findOne({ userId: otherUser._id }).populate(
         "userId",
         "name email"
       );
 
       if (trainer) {
-        // USER SIDE
+        // USER SIDE - showing trainer
         conversations.push({
           _id: msg.conversationId,
-          trainer: {
+          participant: {
+            role: "trainer",
             _id: trainer._id,
             userId: trainer.userId,
             name: trainer.userId.name,
@@ -122,13 +121,14 @@ export const getConversations = async (req, res) => {
           lastMessage: msg
         });
       } else {
-        // TRAINER SIDE (otherUser is client)
+        // TRAINER SIDE - showing client
         conversations.push({
           _id: msg.conversationId,
-          client: {
+          participant: {
+            role: "user",
             _id: otherUser._id,
-            name: otherUser.name,
-            email: otherUser.email
+            userId: otherUser._id,
+            name: otherUser.name
           },
           lastMessage: msg
         });
@@ -138,14 +138,11 @@ export const getConversations = async (req, res) => {
     res.status(200).json(conversations);
   } catch (error) {
     console.error("❌ getConversations error:", error);
-    res.status(500).json({ message: "Failed to fetch conversations" });
+    res.status(500).json({ message: "Failed to load conversations" });
   }
 };
 
-
-/* --------------------------------------------------
-   GET MESSAGES (POLLING FRIENDLY)
--------------------------------------------------- */
+// Get messages in conversation
 export const getConversationMessages = async (req, res) => {
   try {
     const messages = await Message.find({
