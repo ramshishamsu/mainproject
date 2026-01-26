@@ -1,5 +1,6 @@
 import Message from "../models/Message.js";
 import Trainer from "../models/Trainer.js";
+import mongoose from "mongoose";
 
 // Send message
 export const sendMessage = async (req, res) => {
