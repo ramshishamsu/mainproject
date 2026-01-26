@@ -77,33 +77,40 @@ export const createConversation = async (req, res) => {
 -------------------------------------------------- */
 export const getConversations = async (req, res) => {
   try {
+    const userId = req.user._id;
+
     const messages = await Message.find({
-      $or: [{ sender: req.user._id }, { receiver: req.user._id }]
+      $or: [{ sender: userId }, { receiver: userId }]
     })
       .sort({ createdAt: -1 })
       .populate("sender receiver", "name email");
 
     const map = new Map();
 
+    // get latest message per conversation
     for (const msg of messages) {
       const id = msg.conversationId.toString();
-      if (!map.has(id)) map.set(id, msg);
+      if (!map.has(id)) {
+        map.set(id, msg);
+      }
     }
 
     const conversations = [];
 
     for (const msg of map.values()) {
       const otherUser =
-        msg.sender._id.toString() === req.user._id.toString()
+        msg.sender._id.toString() === userId.toString()
           ? msg.receiver
           : msg.sender;
 
+      // check if other user is a trainer
       const trainer = await Trainer.findOne({ userId: otherUser._id }).populate(
         "userId",
         "name email"
       );
 
       if (trainer) {
+        // USER SIDE
         conversations.push({
           _id: msg.conversationId,
           trainer: {
@@ -114,14 +121,27 @@ export const getConversations = async (req, res) => {
           },
           lastMessage: msg
         });
+      } else {
+        // TRAINER SIDE (otherUser is client)
+        conversations.push({
+          _id: msg.conversationId,
+          client: {
+            _id: otherUser._id,
+            name: otherUser.name,
+            email: otherUser.email
+          },
+          lastMessage: msg
+        });
       }
     }
 
-    res.json(conversations);
+    res.status(200).json(conversations);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ getConversations error:", error);
+    res.status(500).json({ message: "Failed to fetch conversations" });
   }
 };
+
 
 /* --------------------------------------------------
    GET MESSAGES (POLLING FRIENDLY)
