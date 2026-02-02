@@ -2,7 +2,7 @@ import Razorpay from "razorpay";
 import Plan from "../models/Plan.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";
-import crypto from "crypto-js";
+import crypto from "crypto";
 
 /*
 |--------------------------------------------------------------------------
@@ -115,6 +115,101 @@ export const getUserPayments = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
+| VERIFY PAYMENT STATUS
+|--------------------------------------------------------------------------
+| Direct payment verification after successful Razorpay payment
+*/
+export const verifyPayment = async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+    
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return res.status(400).json({ message: "Missing payment details" });
+    }
+
+    const razorpay = getRazorpay();
+    
+    // Verify payment signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: "Invalid payment signature" });
+    }
+
+    // Fetch payment details from Razorpay
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    
+    if (payment.status !== 'captured') {
+      return res.status(400).json({ message: "Payment not captured" });
+    }
+
+    // Get plan details from order notes
+    const order = await razorpay.orders.fetch(razorpay_order_id);
+    const planId = order.notes?.planId;
+    const userId = order.notes?.userId;
+
+    if (!planId || !userId) {
+      return res.status(400).json({ message: "Missing plan or user information" });
+    }
+
+    // Check if payment already exists
+    const existingPayment = await Payment.findOne({ transactionId: razorpay_payment_id });
+    if (existingPayment) {
+      return res.json({ 
+        success: true, 
+        message: "Payment already processed",
+        payment: existingPayment 
+      });
+    }
+
+    // Process payment
+    const plan = await Plan.findById(planId);
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+
+    // Calculate end date
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + plan.duration);
+
+    // Create payment record
+    const newPayment = await Payment.create({
+      userId: userId,
+      amount: payment.amount / 100,
+      paymentMethod: "razorpay",
+      paymentStatus: "success",
+      transactionId: razorpay_payment_id
+    });
+
+    // Update user subscription
+    await User.findByIdAndUpdate(userId, {
+      "subscription.plan": planId,
+      "subscription.status": "active",
+      "subscription.startDate": startDate,
+      "subscription.endDate": endDate
+    });
+
+    console.log(`Payment verified and subscription activated for user ${userId}`);
+
+    res.json({ 
+      success: true, 
+      message: "Payment verified successfully",
+      payment: newPayment 
+    });
+
+  } catch (error) {
+    console.error("Payment verification error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
 | RAZORPAY WEBHOOK
 |--------------------------------------------------------------------------
 */
@@ -128,11 +223,12 @@ export const razorpayWebhook = async (req, res) => {
       return res.status(400).json({ message: "Missing signature" });
     }
 
-    // Verify webhook signature using crypto-js
+    // Verify webhook signature using Node.js crypto
     const body = JSON.stringify(req.body);
     const expectedSignature = crypto
-      .HmacSHA256(body, webhookSecret)
-      .toString(crypto.enc.Hex);
+      .createHmac('sha256', webhookSecret)
+      .update(body)
+      .digest('hex');
 
     if (expectedSignature !== signature) {
       return res.status(400).json({ message: "Invalid signature" });
