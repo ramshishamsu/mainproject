@@ -330,7 +330,8 @@ export const getNutritionPlans = async (req, res) => {
       : { clientId: req.user._id };
 
     const nutritionPlans = await NutritionPlan.find(query)
-      .select("name goals startDate endDate duration statistics") // 👈 LIST VIEW ONLY
+      .select("name goals startDate endDate duration statistics clientId") // ✅ Added clientId
+      .populate("clientId", "name email") // ✅ Populate client details
       .sort({ createdAt: -1 });
 
     res.json({ nutritionPlans });

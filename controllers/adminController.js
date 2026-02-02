@@ -176,48 +176,103 @@ export const getAllTrainers = async (req, res) => {
   try {
     const { page = 1, limit = 10, search, status } = req.query;
 
-    const query = {};
+    // Get trainers from Trainer collection (with full profiles)
+    const trainerQuery = {};
     if (search) {
-      query.$or = [
+      trainerQuery.$or = [
         { 'userId.name': { $regex: search, $options: 'i' } },
         { 'userId.email': { $regex: search, $options: 'i' } }
       ];
     }
 
-    // For public access, only show approved trainers
-    // For admin access, allow status filter or show all
     if (status) {
-      query.status = status;
+      trainerQuery.status = status;
     } else if (!req.user || req.user.role !== 'admin') {
-      // If no status specified and not admin, default to approved only
-      query.status = 'approved';
+      trainerQuery.status = 'approved';
     }
 
-    const trainers = await Trainer.find(query)
-      .populate("userId", "name email")
-      .select("userId specialization experience phone profileImage rating numReviews status")
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    const trainerProfiles = await Trainer.find(trainerQuery)
+      .populate("userId", "name email status")
+      .select("userId specialization experience phone profileImage rating numReviews status documents") // ✅ Added documents
+      .sort({ createdAt: -1 });
 
-    // Filter out trainers without userId or with deleted userId
-    const validTrainers = trainers.filter(trainer => trainer.userId);
+    // Get users with role 'trainer' who don't have Trainer profiles
+    const trainerUserIds = trainerProfiles
+      .filter(t => t.userId && t.userId._id) // ✅ Filter out null userId
+      .map(t => t.userId._id);
+    
+    const userQuery = { role: 'trainer' };
+    if (trainerUserIds.length > 0) {
+      userQuery._id = { $nin: trainerUserIds };
+    }
+    
+    if (search) {
+      userQuery.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
 
-    console.log('Found trainers:', trainers.length);
-    console.log('Valid trainers:', validTrainers.length);
+    const trainerUsers = await User.find(userQuery)
+      .select("name email status phone specialization experience profileImage createdAt")
+      .sort({ createdAt: -1 });
 
-    const total = await Trainer.countDocuments(query);
+    // Combine both datasets
+    const allTrainers = [
+      ...trainerProfiles
+        .filter(t => t.userId) // ✅ Filter out trainers without userId
+        .map(t => ({
+          _id: t._id,
+          userId: t.userId,
+          specialization: t.specialization,
+          experience: t.experience,
+          phone: t.phone,
+          profileImage: t.profileImage,
+          rating: t.rating,
+          numReviews: t.numReviews,
+          status: t.status,
+          hasProfile: true,
+          documents: t.documents || [] // ✅ Include documents
+        })),
+      ...trainerUsers.map(u => ({
+        _id: u._id,
+        userId: {
+          _id: u._id,
+          name: u.name,
+          email: u.email,
+          status: u.status
+        },
+        specialization: u.specialization || 'Not specified',
+        experience: u.experience || 0,
+        phone: u.phone,
+        profileImage: u.profileImage,
+        rating: 0,
+        numReviews: 0,
+        status: u.status || 'pending',
+        hasProfile: false,
+        documents: [] // ✅ Empty documents for users without profiles
+      }))
+    ];
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const paginatedTrainers = allTrainers.slice(startIndex, startIndex + limit);
+
+    console.log('Found trainers from profiles:', trainerProfiles.length);
+    console.log('Found trainer users without profiles:', trainerUsers.length);
+    console.log('Total trainers combined:', allTrainers.length);
 
     res.json({
-      trainers: validTrainers,
+      trainers: paginatedTrainers,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
+        total: allTrainers.length,
+        pages: Math.ceil(allTrainers.length / limit)
       }
     });
   } catch (error) {
+    console.error('Get all trainers error:', error);
     res.status(500).json({ message: error.message });
   }
 };
